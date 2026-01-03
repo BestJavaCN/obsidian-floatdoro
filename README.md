@@ -14,9 +14,9 @@ If you find this plugin helpful, please consider supporting its development.
 
 ### Screenshots
 
+![Demonstration](Images/video-1.gif)
 ![DarkAndLightmode](Images/page-1.png)
-![timer](Images/page-5.png)
-![settings](Images/page-4.png)
+![navigation](Images/page-2.png)
 
 
 ---
@@ -78,4 +78,4 @@ You can customize the timer to your liking in the plugin settings:
 
 ### License
 
-This plugin is released under the Obsidian License. See the `LICENSE` file for more details.
+This plugin is released under the MIT License. See the LICENSE file for more details.
