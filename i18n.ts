@@ -36,9 +36,9 @@ export const translations: Record<Language, Translation> = {
         }
     },
     zh: {
-        focus: '专注',
-        shortBreak: '短休息',
-        longBreak: '长休息',
+        focus: '沉思',
+        shortBreak: '小憩',
+        longBreak: '长憩',
         resetToSwitchMode: '请重置计时器以切换模式',
         switchedToMode: '已切换到{mode}模式',
         sessionCompleted: '{mode}时段完成！',
