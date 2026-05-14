@@ -149,6 +149,10 @@ export default class PomodoroPlugin extends Plugin {
         parent.prepend(this.containerEl);
         
         this.createControlPanel();
+        
+        // 默认显示面板，无需鼠标悬停
+        this.isPanelPinned = true;
+        this.controlPanelEl?.addClass('is-panel-visible');
     }
 
     private createControlPanel() {
@@ -205,16 +209,7 @@ export default class PomodoroPlugin extends Plugin {
     };
     
     private handleDocumentClick = (event: MouseEvent) => {
-        if (this.containerEl && !this.containerEl.contains(event.target as Node)) {
-            if (this.isPanelPinned) {
-                this.isPanelPinned = false;
-                if (this.hideTimeout !== null) {
-                    clearTimeout(this.hideTimeout);
-                    this.hideTimeout = null;
-                }
-                this.controlPanelEl?.removeClass('is-panel-visible');
-            }
-        }
+        // 点击外部不再取消固定，面板会一直显示直到再次点击计时器按钮
     };
 
     private updateUI(remainingTime: number, totalTime: number) {
