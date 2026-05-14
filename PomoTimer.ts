@@ -198,6 +198,8 @@ export interface PomodoroSettings {
     playSound: boolean;
     showInStatusBar: boolean;
     language: Language;
+    panelX?: number;
+    panelY?: number;
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {

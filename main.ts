@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, Notice, WorkspaceLeaf, addIcon, setIcon } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, Notice, addIcon, setIcon } from 'obsidian';
 import { PomoTimer, TimerState, PomodoroSettings, DEFAULT_SETTINGS, Language } from './PomoTimer';
 import { t } from './i18n';
 
@@ -16,8 +16,12 @@ export default class PomodoroPlugin extends Plugin {
     private pieCircleEl: SVGCircleElement | null = null;
     private panelTimeEl: HTMLButtonElement | null = null;
     private panelModeEl: HTMLDivElement | null = null;
-    private isPanelPinned = false;
-    private hideTimeout: number | null = null;
+    private isVisible = true;
+
+    // Drag related variables
+    private isDragging = false;
+    private dragOffset = { x: 0, y: 0 };
+    private lastPosition = { x: 0, y: 0 };
 
     async onload() {
         await this.loadSettings();
@@ -65,29 +69,27 @@ export default class PomodoroPlugin extends Plugin {
             }
         });
 
-        // Register active leaf change event
-        this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => this.refreshHeaderButton(leaf)));
-        this.app.workspace.onLayoutReady(() => this.refreshHeaderButton());
-
-        // Register DOM event for document click to ensure cleanup
-        this.registerDomEvent(document, 'click', (event: MouseEvent) => {
-            this.handleDocumentClick(event);
+        this.addCommand({
+            id: 'toggle-visibility',
+            name: 'Toggle timer visibility',
+            callback: () => {
+                this.toggleVisibility();
+            }
         });
 
         // Request notification permission on startup
         if ('Notification' in window && Notification.permission === 'default') {
             void Notification.requestPermission().catch(err => console.error("Minidoro: Error requesting notification permission", err));
         }
+
+        // Create floating panel after layout is ready
+        this.app.workspace.onLayoutReady(() => {
+            this.createFloatingPanel();
+        });
     }
 
     onunload() {
-        // Clear any pending timeouts
-        if (this.hideTimeout !== null) {
-            clearTimeout(this.hideTimeout);
-            this.hideTimeout = null;
-        }
-        
-        this.removeHeaderButton();
+        this.removeFloatingPanel();
         this.timer.stop();
     }
 
@@ -101,58 +103,53 @@ export default class PomodoroPlugin extends Plugin {
         this.updateUI(0, 0); 
     }
 
-    private refreshHeaderButton(leaf: WorkspaceLeaf | null = null) {
-        this.removeHeaderButton();
-        
-        // Fixed: activeLeaf is deprecated. Use getLeaf(false) to get the most recent leaf.
-        const targetLeaf = leaf || this.app.workspace.getLeaf(false);
-        
-        if (!targetLeaf) return;
+    private createFloatingPanel() {
+        // Remove existing panel if any
+        this.removeFloatingPanel();
 
-        setTimeout(() => {
-            // Check if view exists on the leaf
-            if (!targetLeaf.view) return;
-            
-            const actionsContainer = targetLeaf.view.containerEl.querySelector('.view-actions');
-            if (actionsContainer && !actionsContainer.querySelector('.minidoro-container')) {
-                this.createHeaderButton(actionsContainer);
-                this.updateUI(0, 0);
-            }
-        }, 0);
-    }
+        // Create main container
+        this.containerEl = document.body.createEl('div', { cls: 'minidoro-container' });
 
-    private createHeaderButton(parent: Element) {
-        this.containerEl = parent.createEl('div', { cls: 'minidoro-container' });
+        // Load saved position if available
+        if (this.settings.panelX !== undefined && this.settings.panelY !== undefined) {
+            // Clear right and use left for positioning
+            this.containerEl.style.right = 'auto';
+            this.containerEl.style.left = `${this.settings.panelX}px`;
+            this.containerEl.style.top = `${this.settings.panelY}px`;
+            this.lastPosition = { x: this.settings.panelX, y: this.settings.panelY };
+        }
 
-        // Event Listeners for Hover
-        this.containerEl.addEventListener('mouseenter', this.showPanel);
-        this.containerEl.addEventListener('mouseleave', this.hidePanel);
+        // Create close button
+        const closeButton = this.containerEl.createEl('button', { cls: 'minidoro-close-button' });
+        closeButton.innerHTML = '&times;';
+        closeButton.onclick = () => this.toggleVisibility();
 
+        // Create pie button
         const pieButton = this.containerEl.createEl('button', { cls: 'minidoro-pie-button' });
         pieButton.setAttribute('aria-label', 'Minidoro timer');
         pieButton.onclick = (event) => {
             event.stopPropagation();
             if (this.isSessionComplete) {
                 this.acknowledgeSessionComplete();
-            } else {
-                this.isPanelPinned = !this.isPanelPinned;
             }
         };
         
         // SVG Creation using setIcon
-        // We use the custom icon registered in onload
         setIcon(pieButton, 'minidoro-timer');
 
-        // Retrieve the reference to the dynamic circle element so we can animate it
+        // Retrieve the reference to the dynamic circle element
         this.pieCircleEl = pieButton.querySelector('.minidoro-progress-circle');
-        
-        parent.prepend(this.containerEl);
-        
+
+        // Create control panel
         this.createControlPanel();
-        
-        // 默认显示面板，无需鼠标悬停
-        this.isPanelPinned = true;
-        this.controlPanelEl?.addClass('is-panel-visible');
+
+        // Add drag event listeners
+        this.containerEl.addEventListener('mousedown', this.onDragStart);
+        document.addEventListener('mousemove', this.onDragMove);
+        document.addEventListener('mouseup', this.onDragEnd);
+
+        // Update UI
+        this.updateUI(0, 0);
     }
 
     private createControlPanel() {
@@ -179,37 +176,87 @@ export default class PomodoroPlugin extends Plugin {
         };
     }
 
-    private removeHeaderButton() {
-        // Clear any pending hide timeout
-        if (this.hideTimeout !== null) {
-            clearTimeout(this.hideTimeout);
-            this.hideTimeout = null;
+    private removeFloatingPanel() {
+        // Save position before removing
+        if (this.containerEl) {
+            const rect = this.containerEl.getBoundingClientRect();
+            this.settings.panelX = rect.left;
+            this.settings.panelY = rect.top;
+            void this.saveData(this.settings);
+            
+            this.containerEl.removeEventListener('mousedown', this.onDragStart);
+            this.containerEl.remove();
         }
         
-        this.containerEl?.remove();
         this.containerEl = this.controlPanelEl = this.pieCircleEl = this.panelTimeEl = this.panelModeEl = null;
-        this.isPanelPinned = false;
+        this.isVisible = false;
     }
 
-    private showPanel = () => {
-        if (this.hideTimeout !== null) {
-            clearTimeout(this.hideTimeout);
-            this.hideTimeout = null;
+    private toggleVisibility() {
+        if (!this.containerEl) {
+            // Create panel if it doesn't exist
+            this.createFloatingPanel();
+        } else {
+            // Toggle visibility
+            if (this.isVisible) {
+                this.containerEl.style.display = 'none';
+                this.isVisible = false;
+            } else {
+                this.containerEl.style.display = 'flex';
+                this.isVisible = true;
+            }
         }
-        this.controlPanelEl?.addClass('is-panel-visible');
-    };
-    
-    private hidePanel = () => { 
-        if (!this.isPanelPinned) {
-            this.hideTimeout = window.setTimeout(() => {
-                this.controlPanelEl?.removeClass('is-panel-visible');
-                this.hideTimeout = null;
-            }, 300);
+    }
+
+    private onDragStart = (event: MouseEvent) => {
+        // Prevent dragging when clicking buttons inside
+        if ((event.target as HTMLElement).closest('button')) {
+            return;
+        }
+        
+        this.isDragging = true;
+        this.containerEl?.addClass('dragging');
+        
+        const rect = this.containerEl?.getBoundingClientRect();
+        if (rect) {
+            this.dragOffset = {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
         }
     };
-    
-    private handleDocumentClick = (event: MouseEvent) => {
-        // 点击外部不再取消固定，面板会一直显示直到再次点击计时器按钮
+
+    private onDragMove = (event: MouseEvent) => {
+        if (!this.isDragging || !this.containerEl) return;
+
+        const x = event.clientX - this.dragOffset.x;
+        const y = event.clientY - this.dragOffset.y;
+
+        // Ensure panel stays within viewport
+        const maxX = window.innerWidth - (this.containerEl.offsetWidth || 150);
+        const maxY = window.innerHeight - (this.containerEl.offsetHeight || 100);
+        
+        this.lastPosition = {
+            x: Math.max(0, Math.min(x, maxX)),
+            y: Math.max(0, Math.min(y, maxY))
+        };
+
+        // Clear right and use left for positioning
+        this.containerEl.style.right = 'auto';
+        this.containerEl.style.left = `${this.lastPosition.x}px`;
+        this.containerEl.style.top = `${this.lastPosition.y}px`;
+    };
+
+    private onDragEnd = () => {
+        if (!this.isDragging) return;
+        
+        this.isDragging = false;
+        this.containerEl?.removeClass('dragging');
+        
+        // Save position to settings
+        this.settings.panelX = this.lastPosition.x;
+        this.settings.panelY = this.lastPosition.y;
+        void this.saveData(this.settings);
     };
 
     private updateUI(remainingTime: number, totalTime: number) {
