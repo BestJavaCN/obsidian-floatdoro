@@ -119,11 +119,6 @@ export default class PomodoroPlugin extends Plugin {
             this.lastPosition = { x: this.settings.panelX, y: this.settings.panelY };
         }
 
-        // Create close button
-        const closeButton = this.containerEl.createEl('button', { cls: 'minidoro-close-button' });
-        closeButton.innerHTML = '&times;';
-        closeButton.onclick = () => this.toggleVisibility();
-
         // Create pie button
         const pieButton = this.containerEl.createEl('button', { cls: 'minidoro-pie-button' });
         pieButton.setAttribute('aria-label', 'Minidoro timer');
@@ -131,6 +126,9 @@ export default class PomodoroPlugin extends Plugin {
             event.stopPropagation();
             if (this.isSessionComplete) {
                 this.acknowledgeSessionComplete();
+            } else {
+                // Toggle panel expand/collapse
+                this.togglePanel();
             }
         };
         
@@ -208,9 +206,31 @@ export default class PomodoroPlugin extends Plugin {
         }
     }
 
+    private togglePanel() {
+        // Toggle panel expand/collapse
+        const pieButton = this.containerEl?.querySelector('.minidoro-pie-button');
+        const controlPanel = this.containerEl?.querySelector('.minidoro-control-panel');
+        
+        if (pieButton && controlPanel) {
+            const isExpanded = pieButton.classList.contains('expanded');
+            
+            if (isExpanded) {
+                // Collapse panel
+                pieButton.classList.remove('expanded');
+                controlPanel.classList.remove('expanded');
+            } else {
+                // Expand panel
+                pieButton.classList.add('expanded');
+                controlPanel.classList.add('expanded');
+            }
+        }
+    }
+
     private onDragStart = (event: MouseEvent) => {
-        // Prevent dragging when clicking buttons inside
-        if ((event.target as HTMLElement).closest('button')) {
+        // Allow dragging from anywhere on the container including the pie button
+        // But prevent dragging when clicking the time button or close button inside the panel
+        const target = event.target as HTMLElement;
+        if (target.closest('.minidoro-panel-time')) {
             return;
         }
         

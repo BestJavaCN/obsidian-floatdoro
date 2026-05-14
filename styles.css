@@ -1,96 +1,55 @@
-/* Container for our timer icon and its pop-up panel */
+/* Container for our timer icon */
 .minidoro-container {
   position: fixed;
   top: 20px;
-  left: auto;
   right: 20px;
   z-index: 10000;
-  padding: 12px;
-  background-color: var(--background-secondary);
-  border-radius: var(--radius-m);
-  border: 1px solid var(--background-modifier-border);
-  box-shadow: var(--shadow-l);
-  min-width: 140px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  cursor: move;
-  user-select: none;
-}
-
-/* Session complete animation - minimal circle pulse only */
-.minidoro-container.session-complete svg {
-  animation: minimalCirclePulse 1s ease-in-out infinite;
-}
-
-@keyframes minimalCirclePulse {
-  0%, 100% { 
-    transform: scale(1);
-  }
-  50% { 
-    transform: scale(1.08);
-  }
-}
-
-/* Close button */
-.minidoro-close-button {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: var(--background-modifier-error);
-  color: var(--text-on-accent);
-  border: none;
-  cursor: pointer;
-  display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  padding: 0;
-  opacity: 0.7;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.minidoro-close-button:hover {
-  opacity: 1;
-  transform: scale(1.1);
 }
 
 /* Dragging state */
 .minidoro-container.dragging {
   opacity: 0.8;
   cursor: grabbing;
-  box-shadow: var(--shadow-xl);
 }
 
-/* The main icon button */
+/* The main icon button - sits above the panel */
 .minidoro-pie-button {
+  position: relative;
   background-color: transparent !important;
+  background-image: none !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
-  border-radius: var(--radius-s);
+  padding: 0;
+  border-radius: 0;
   color: var(--icon-color);
   opacity: var(--icon-opacity);
-  height: auto;
-  border: 0;
+  height: 44px;
+  width: 44px;
+  border: none !important;
   cursor: pointer;
   box-shadow: none !important;
+  outline: none !important;
   transition: transform 0.2s ease, opacity 0.2s ease;
-  margin: 0 auto;
 }
 
-.minidoro-pie-button:hover {
+.minidoro-pie-button:hover,
+.minidoro-pie-button:active,
+.minidoro-pie-button:focus {
   opacity: 1;
-  background-color: var(--background-modifier-hover) !important;
+  transform: scale(1.05);
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .minidoro-pie-chart {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   transition: transform 0.3s ease;
   overflow: visible;
 }
@@ -102,12 +61,14 @@
 }
 
 .minidoro-progress-track {
-  stroke: transparent;
+  stroke: var(--background-modifier-border);
+  stroke-width: 3;
 }
 
 .minidoro-progress-circle {
   transition: stroke-dashoffset 0.3s linear, stroke 0.3s ease;
   stroke-linecap: round;
+  stroke-width: 3;
   stroke-dasharray: var(--circumference, 50.27) var(--circumference, 50.27);
   stroke-dashoffset: calc(var(--circumference, 50.27) * (1 - var(--progress, 1)));
 }
@@ -128,17 +89,53 @@
   stroke-dashoffset: var(--circumference, 50.27);
 }
 
-/* Control panel now integrated into main container */
+/* Session complete animation */
+.minidoro-container.session-complete .minidoro-pie-chart {
+  animation: minimalCirclePulse 1s ease-in-out infinite;
+}
+
+@keyframes minimalCirclePulse {
+  0%, 100% { 
+    transform: scale(1);
+  }
+  50% { 
+    transform: scale(1.08);
+  }
+}
+
+/* Control panel - appears below the button */
 .minidoro-control-panel {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: -1;
+  padding: 12px;
+  margin-top: 0;
+  background-color: var(--background-secondary);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: var(--shadow-l);
+  min-width: 100px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   text-align: center;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.minidoro-control-panel.expanded {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
   pointer-events: auto;
+  z-index: 9999;
 }
 
 .minidoro-panel-mode {
-  font-size: var(--font-ui-small);
+  font-size: var(--font-ui-large);
   font-weight: 500;
   cursor: pointer;
   padding: 4px 8px;
@@ -203,11 +200,15 @@
     stroke-width: 5;
   }
   
+  .minidoro-progress-track {
+    stroke-width: 5;
+  }
+  
   .minidoro-container.session-complete .minidoro-progress-circle {
     stroke-width: 6;
   }
   
-  .minidoro-container {
+  .minidoro-control-panel {
     border-width: 2px;
   }
 }
