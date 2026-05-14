@@ -8,6 +8,43 @@ export enum TimerState {
     Idle
 }
 
+export type Language = 'en' | 'zh';
+
+export interface Translation {
+    focus: string;
+    shortBreak: string;
+    longBreak: string;
+    resetToSwitchMode: string;
+    switchedToMode: string;
+    sessionCompleted: string;
+    notificationTitle: string;
+    notificationBody: string;
+    settings: {
+        workTime: string;
+        workTimeDesc: string;
+        shortBreakTime: string;
+        shortBreakTimeDesc: string;
+        longBreakTime: string;
+        longBreakTimeDesc: string;
+        longBreakInterval: string;
+        longBreakIntervalDesc: string;
+        autoStart: string;
+        autoStartBreaks: string;
+        autoStartBreaksDesc: string;
+        autoStartPomodoros: string;
+        autoStartPomodorosDesc: string;
+        notification: string;
+        playSound: string;
+        playSoundDesc: string;
+        desktopNotifications: string;
+        desktopNotificationsDesc: string;
+        language: string;
+        languageDesc: string;
+        english: string;
+        chinese: string;
+    };
+}
+
 export class PomoTimer {
     private state: TimerState = TimerState.Idle;
     private prePauseState: TimerState = TimerState.Idle;
@@ -160,6 +197,7 @@ export interface PomodoroSettings {
     showDesktopNotification: boolean;
     playSound: boolean;
     showInStatusBar: boolean;
+    language: Language;
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {
@@ -171,5 +209,6 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     autoStartPomodoros: false,
     showDesktopNotification: true,
     playSound: true,
-    showInStatusBar: false
+    showInStatusBar: false,
+    language: 'en'
 };

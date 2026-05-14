@@ -1,5 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, Notice, WorkspaceLeaf, addIcon, setIcon } from 'obsidian';
-import { PomoTimer, TimerState, PomodoroSettings, DEFAULT_SETTINGS } from './PomoTimer';
+import { PomoTimer, TimerState, PomodoroSettings, DEFAULT_SETTINGS, Language } from './PomoTimer';
+import { t } from './i18n';
 
 export default class PomodoroPlugin extends Plugin {
     settings: PomodoroSettings;
@@ -286,12 +287,15 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private getModeText = (): string => {
+        const translation = t(this.settings.language);
         return this.currentMode === TimerState.Work 
-            ? 'Focus' 
+            ? translation.focus 
             : this.currentMode === TimerState.ShortBreak 
-                ? 'Short break' 
-                : 'Long break';
+                ? translation.shortBreak 
+                : translation.longBreak;
     };
+
+    private getTranslation = () => t(this.settings.language);
 
     private handlePauseResumeClick = () => {
         if (this.isSessionComplete) {
@@ -317,8 +321,10 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private handleCycleModeClick = () => {
+        const translation = this.getTranslation();
+        
         if (this.timer.getState() !== TimerState.Idle || this.timer.isRunning()) {
-            new Notice('Reset the timer to switch modes');
+            new Notice(translation.resetToSwitchMode);
             return;
         }
 
@@ -338,7 +344,7 @@ export default class PomodoroPlugin extends Plugin {
                 this.currentMode = TimerState.Work; 
                 break;
         }
-        new Notice(`Switched to ${this.getModeText()} mode`);
+        new Notice(translation.switchedToMode.replace('{mode}', this.getModeText()));
         this.updateUI(0, 0);
     };
 
@@ -351,8 +357,9 @@ export default class PomodoroPlugin extends Plugin {
             this.showDesktopNotification();
         }
 
+        const translation = this.getTranslation();
         const sessionType = this.getModeText();
-        new Notice(`${sessionType} session completed!`, 4000);
+        new Notice(translation.sessionCompleted.replace('{mode}', sessionType), 4000);
 
         this.advanceToNextMode();
         this.updateUI(0, 0);
@@ -396,10 +403,11 @@ export default class PomodoroPlugin extends Plugin {
 
     private showDesktopNotification() {
         if ('Notification' in window && Notification.permission === 'granted') {
+            const translation = this.getTranslation();
             const sessionType = this.getModeText();
             
-            const notification = new Notification(`Minidoro - ${sessionType} complete`, {
-                body: `Your ${sessionType.toLowerCase()} session is finished.`,
+            const notification = new Notification(translation.notificationTitle.replace('{mode}', sessionType), {
+                body: translation.notificationBody.replace('{mode_lower}', sessionType.toLowerCase()),
                 icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIHN0cm9rZT0iIzY2NiIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8L3N2Zz4K',
                 requireInteraction: false,
                 tag: 'pomodoro-timer',
@@ -459,11 +467,27 @@ class PomodoroSettingTab extends PluginSettingTab {
     
     display(): void {
         const { containerEl } = this;
+        const translation = t(this.plugin.settings.language);
+        const settingsTrans = translation.settings;
+        
         containerEl.empty();
+
+        new Setting(containerEl)
+            .setName(settingsTrans.language)
+            .setDesc(settingsTrans.languageDesc)
+            .addDropdown(dropdown => dropdown
+                .addOption('en', settingsTrans.english)
+                .addOption('zh', settingsTrans.chinese)
+                .setValue(this.plugin.settings.language)
+                .onChange(async (value) => {
+                    this.plugin.settings.language = value as Language;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
         
         new Setting(containerEl)
-            .setName('Work time')
-            .setDesc('Duration of focus sessions (minutes)')
+            .setName(settingsTrans.workTime)
+            .setDesc(settingsTrans.workTimeDesc)
             .addSlider(slider => slider
                 .setLimits(1, 60, 2)
                 .setValue(this.plugin.settings.workTime)
@@ -474,8 +498,8 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
         
         new Setting(containerEl)
-            .setName('Short break time')
-            .setDesc('Duration of short breaks (minutes)')
+            .setName(settingsTrans.shortBreakTime)
+            .setDesc(settingsTrans.shortBreakTimeDesc)
             .addSlider(slider => slider
                 .setLimits(1, 30, 1)
                 .setValue(this.plugin.settings.shortBreakTime)
@@ -486,8 +510,8 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
         
         new Setting(containerEl)
-            .setName('Long break time')
-            .setDesc('Duration of long breaks (minutes)')
+            .setName(settingsTrans.longBreakTime)
+            .setDesc(settingsTrans.longBreakTimeDesc)
             .addSlider(slider => slider
                 .setLimits(1, 60, 1)
                 .setValue(this.plugin.settings.longBreakTime)
@@ -498,8 +522,8 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Sessions until long break')
-            .setDesc('Number of focus sessions before a long break')
+            .setName(settingsTrans.longBreakInterval)
+            .setDesc(settingsTrans.longBreakIntervalDesc)
             .addSlider(slider => slider
                 .setLimits(2, 10, 1)
                 .setValue(this.plugin.settings.longBreakInterval)
@@ -510,12 +534,12 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Auto-start')
+            .setName(settingsTrans.autoStart)
             .setHeading();
         
         new Setting(containerEl)
-            .setName('Auto-start breaks')
-            .setDesc('Automatically start break sessions')
+            .setName(settingsTrans.autoStartBreaks)
+            .setDesc(settingsTrans.autoStartBreaksDesc)
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoStartBreaks)
                 .onChange(async (value) => {
@@ -524,8 +548,8 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Auto-start focus sessions')
-            .setDesc('Automatically start focus sessions after breaks')
+            .setName(settingsTrans.autoStartPomodoros)
+            .setDesc(settingsTrans.autoStartPomodorosDesc)
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoStartPomodoros)
                 .onChange(async (value) => {
@@ -534,12 +558,12 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Notification')
+            .setName(settingsTrans.notification)
             .setHeading();
 
         new Setting(containerEl)
-            .setName('Play sound')
-            .setDesc('Play a sound when sessions end')
+            .setName(settingsTrans.playSound)
+            .setDesc(settingsTrans.playSoundDesc)
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.playSound)
                 .onChange(async (value) => {
@@ -548,8 +572,8 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Desktop notifications')
-            .setDesc('Show desktop notifications when sessions end')
+            .setName(settingsTrans.desktopNotifications)
+            .setDesc(settingsTrans.desktopNotificationsDesc)
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showDesktopNotification)
                 .onChange(async (value) => {
