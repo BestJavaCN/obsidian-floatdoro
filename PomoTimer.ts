@@ -42,6 +42,11 @@ export interface Translation {
         languageDesc: string;
         english: string;
         chinese: string;
+        panelSize: string;
+        panelSizeDesc: string;
+        small: string;
+        medium: string;
+        large: string;
     };
 }
 
@@ -198,6 +203,7 @@ export interface PomodoroSettings {
     playSound: boolean;
     showInStatusBar: boolean;
     language: Language;
+    panelSize: 'small' | 'medium' | 'large';
     panelX?: number;
     panelY?: number;
 }
@@ -212,5 +218,6 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     showDesktopNotification: true,
     playSound: true,
     showInStatusBar: false,
-    language: 'en'
+    language: 'en',
+    panelSize: 'medium'
 };

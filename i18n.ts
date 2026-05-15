@@ -32,7 +32,12 @@ export const translations: Record<Language, Translation> = {
             language: 'Language',
             languageDesc: 'Choose the display language',
             english: 'English',
-            chinese: 'Chinese'
+            chinese: 'Chinese',
+            panelSize: 'Panel size',
+            panelSizeDesc: 'Size of the floating timer panel',
+            small: 'Small',
+            medium: 'Medium',
+            large: 'Large'
         }
     },
     zh: {
@@ -66,7 +71,12 @@ export const translations: Record<Language, Translation> = {
             language: '语言',
             languageDesc: '选择显示语言',
             english: 'English',
-            chinese: '中文'
+            chinese: '中文',
+            panelSize: '面板大小',
+            panelSizeDesc: '悬浮计时器面板的大小',
+            small: '小',
+            medium: '中',
+            large: '大'
         }
     }
 };

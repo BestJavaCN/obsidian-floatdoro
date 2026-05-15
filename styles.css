@@ -103,96 +103,213 @@
   }
 }
 
-/* Control panel - appears below the button */
-.minidoro-control-panel {
+/* Control panel - fixed size 1:1 square - default medium size */
+.minidoro-control-panel-wrapper {
   position: absolute;
-  top: 40px;
+  top: 54px;
   left: 50%;
   transform: translateX(-50%);
   z-index: -1;
-  padding: 12px;
-  margin-top: 0;
-  background-color: var(--background-secondary);
-  border-radius: var(--radius-m);
-  border: 1px solid var(--background-modifier-border);
-  box-shadow: var(--shadow-l);
-  min-width: 100px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  text-align: center;
+  width: 120px;
   opacity: 0;
   transform: translateX(-50%) translateY(-10px);
   transition: opacity 0.2s ease, transform 0.2s ease;
   pointer-events: none;
 }
 
-.minidoro-control-panel.expanded {
+/* Small size */
+.minidoro-container.small .minidoro-control-panel-wrapper {
+  width: 100px;
+}
+
+/* Large size */
+.minidoro-container.large .minidoro-control-panel-wrapper {
+  width: 140px;
+}
+
+.minidoro-control-panel-wrapper.expanded {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
   z-index: 9999;
 }
 
-.minidoro-panel-mode {
-  font-size: var(--font-ui-large);
-  font-weight: 500;
+/* Control panel content with 1:1 aspect ratio */
+.minidoro-control-panel {
+  width: 100%;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Small panel adjustments */
+.minidoro-container.small .minidoro-control-panel {
+  gap: 4px;
+  padding: 6px;
+}
+
+/* Large panel adjustments */
+.minidoro-container.large .minidoro-control-panel {
+  gap: 8px;
+  padding: 10px;
+}
+
+/* Purple header section with rounded corners */
+.minidoro-panel-header {
+  background: #A382F8;
+  padding: 10px 8px;
+  margin: 0;
+  border-radius: 10px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--radius-s);
-  transition: background-color 0.2s ease, opacity 0.2s ease, cursor 0.2s ease;
+  transition: opacity 0.2s ease;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.minidoro-panel-mode:hover {
-  background-color: var(--background-modifier-hover);
-}
-
-.minidoro-panel-mode.minidoro-work-mode {
-  color: var(--interactive-accent);
-}
-
-.minidoro-panel-mode.minidoro-break-mode {
-  color: #808080;
-}
-
-.minidoro-panel-mode.mode-enabled {
-  opacity: 1;
-  cursor: pointer;
-}
-
-.minidoro-panel-mode.mode-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
+.minidoro-panel-header:hover {
+  opacity: 0.95;
 }
 
 .minidoro-panel-time {
-  font-family: var(--font-monospace, monospace);
-  font-size: 24px;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+  font-size: 20px;
   font-weight: 600;
-  color: var(--text-normal);
+  color: #ffffff;
+  display: block;
+  letter-spacing: 0;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.minidoro-panel-mode {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  display: block;
+}
+
+/* Small size adjustments */
+.minidoro-container.small .minidoro-panel-header {
+  padding: 8px 6px;
+  border-radius: 8px;
+}
+
+.minidoro-container.small .minidoro-panel-time {
+  font-size: 16px;
+}
+
+.minidoro-container.small .minidoro-panel-mode {
+  font-size: 10px;
+}
+
+/* Large size adjustments */
+.minidoro-container.large .minidoro-panel-header {
+  padding: 14px 10px;
+  border-radius: 12px;
+}
+
+.minidoro-container.large .minidoro-panel-time {
+  font-size: 24px;
+}
+
+.minidoro-container.large .minidoro-panel-mode {
+  font-size: 14px;
+}
+
+/* Button bar section */
+.minidoro-button-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.minidoro-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #F8F7F7 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: var(--radius-s);
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  border: none;
-  background-color: transparent;
-  min-width: 100px;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin: 0;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.06) !important;
 }
 
-.minidoro-panel-time:hover {
-  background-color: var(--background-modifier-hover);
+.minidoro-btn:hover {
+  transform: translateY(-1px);
+  background: #F0F0F0 !important;
 }
 
-.minidoro-panel-time:active {
-  transform: scale(0.98);
+.minidoro-btn:active {
+  transform: scale(0.95);
 }
 
-.minidoro-pie-button:focus-visible,
-.minidoro-panel-mode:focus-visible,
-.minidoro-panel-time:focus-visible {
-  outline: 2px solid var(--interactive-accent);
+.minidoro-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Small size button adjustments */
+.minidoro-container.small .minidoro-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+}
+
+.minidoro-container.small .minidoro-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Large size button adjustments */
+.minidoro-container.large .minidoro-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+}
+
+.minidoro-container.large .minidoro-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Button icon colors */
+.minidoro-btn-play svg {
+  color: #5b9cf9;
+}
+
+.minidoro-btn-reset svg {
+  color: #f5c842;
+}
+
+.minidoro-btn-complete svg {
+  color: #73c991;
+}
+
+.minidoro-btn:focus-visible {
+  outline: 2px solid #d8a6e0;
   outline-offset: 2px;
+}
+
+.minidoro-control-panel:focus-visible,
+.minidoro-panel-header:focus-visible {
+  outline: 2px solid #d8a6e0;
+  outline-offset: 4px;
 }
 
 @media (prefers-contrast: high) {

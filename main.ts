@@ -14,8 +14,9 @@ export default class PomodoroPlugin extends Plugin {
     private containerEl: HTMLDivElement | null = null;
     private controlPanelEl: HTMLDivElement | null = null;
     private pieCircleEl: SVGCircleElement | null = null;
-    private panelTimeEl: HTMLButtonElement | null = null;
+    private panelTimeEl: HTMLElement | null = null;
     private panelModeEl: HTMLDivElement | null = null;
+    private playButtonEl: HTMLButtonElement | null = null;
     private isVisible = true;
 
     // Drag related variables
@@ -101,14 +102,25 @@ export default class PomodoroPlugin extends Plugin {
         await this.saveData(this.settings); 
         this.timer.updateSettings(this.settings); 
         this.updateUI(0, 0); 
+        this.updatePanelSize();
+    }
+    
+    private updatePanelSize() {
+        if (!this.containerEl) return;
+        // Remove existing size classes
+        this.containerEl.classList.remove('small', 'medium', 'large');
+        // Add current size class
+        this.containerEl.classList.add(this.settings.panelSize);
     }
 
     private createFloatingPanel() {
         // Remove existing panel if any
         this.removeFloatingPanel();
 
-        // Create main container
-        this.containerEl = document.body.createEl('div', { cls: 'minidoro-container' });
+        // Create main container with size class
+        this.containerEl = document.body.createEl('div', { 
+            cls: `minidoro-container ${this.settings.panelSize}` 
+        });
 
         // Load saved position if available
         if (this.settings.panelX !== undefined && this.settings.panelY !== undefined) {
@@ -152,26 +164,62 @@ export default class PomodoroPlugin extends Plugin {
 
     private createControlPanel() {
         if (!this.containerEl) return;
-        this.controlPanelEl = this.containerEl.createEl('div', { cls: 'minidoro-control-panel' });
-        this.panelModeEl = this.controlPanelEl.createEl('div', { 
-            cls: 'minidoro-panel-mode', 
+        
+        // Create wrapper
+        const wrapperEl = this.containerEl.createEl('div', { cls: 'minidoro-control-panel-wrapper' });
+        
+        // Create actual control panel
+        this.controlPanelEl = wrapperEl.createEl('div', { cls: 'minidoro-control-panel' });
+        
+        // Create header section (purple area)
+        const headerEl = this.controlPanelEl.createEl('div', { 
+            cls: 'minidoro-panel-header',
             attr: { 
                 'title': 'Click to switch mode (only when timer is reset)',
                 'role': 'button',
                 'tabindex': '0'
             } 
         });
-        this.panelModeEl.onclick = () => this.handleCycleModeClick();
         
-        this.panelTimeEl = this.controlPanelEl.createEl('button', { 
-            cls: 'minidoro-panel-time', 
-            attr: { 'title': 'Left click - play/pause, right click - reset' }
+        // Time display
+        this.panelTimeEl = headerEl.createEl('div', { 
+            cls: 'minidoro-panel-time'
         });
-        this.panelTimeEl.onclick = () => this.handlePauseResumeClick();
-        this.panelTimeEl.oncontextmenu = (e) => { 
-            e.preventDefault(); 
-            this.handleResetClick(); 
-        };
+        
+        // Mode display
+        this.panelModeEl = headerEl.createEl('div', { 
+            cls: 'minidoro-panel-mode'
+        });
+        
+        // Click header to switch mode
+        headerEl.onclick = () => this.handleCycleModeClick();
+        
+        // Create button bar
+        const buttonBar = this.controlPanelEl.createEl('div', { cls: 'minidoro-button-bar' });
+        
+        // Play button
+        this.playButtonEl = buttonBar.createEl('button', { 
+            cls: 'minidoro-btn minidoro-btn-play',
+            attr: { 'title': 'Start timer' }
+        });
+        setIcon(this.playButtonEl, 'play');
+        this.playButtonEl.onclick = () => this.handlePauseResumeClick();
+        
+        // Reset button
+        const resetBtn = buttonBar.createEl('button', { 
+            cls: 'minidoro-btn minidoro-btn-reset',
+            attr: { 'title': 'Reset timer' }
+        });
+        setIcon(resetBtn, 'rotate-ccw');
+        resetBtn.onclick = () => this.handleResetClick();
+        
+        // Complete button (not implemented yet)
+        const completeBtn = buttonBar.createEl('button', { 
+            cls: 'minidoro-btn minidoro-btn-complete',
+            attr: { 'title': 'Complete session (not implemented)' }
+        });
+        setIcon(completeBtn, 'check');
+        completeBtn.onclick = () => {};
     }
 
     private removeFloatingPanel() {
@@ -209,28 +257,28 @@ export default class PomodoroPlugin extends Plugin {
     private togglePanel() {
         // Toggle panel expand/collapse
         const pieButton = this.containerEl?.querySelector('.minidoro-pie-button');
-        const controlPanel = this.containerEl?.querySelector('.minidoro-control-panel');
+        const panelWrapper = this.containerEl?.querySelector('.minidoro-control-panel-wrapper');
         
-        if (pieButton && controlPanel) {
+        if (pieButton && panelWrapper) {
             const isExpanded = pieButton.classList.contains('expanded');
             
             if (isExpanded) {
                 // Collapse panel
                 pieButton.classList.remove('expanded');
-                controlPanel.classList.remove('expanded');
+                panelWrapper.classList.remove('expanded');
             } else {
                 // Expand panel
                 pieButton.classList.add('expanded');
-                controlPanel.classList.add('expanded');
+                panelWrapper.classList.add('expanded');
             }
         }
     }
 
     private onDragStart = (event: MouseEvent) => {
-        // Allow dragging from anywhere on the container including the pie button
-        // But prevent dragging when clicking the time button or close button inside the panel
+        // Allow dragging from anywhere on the container
         const target = event.target as HTMLElement;
-        if (target.closest('.minidoro-panel-time')) {
+        // Prevent dragging when clicking buttons inside the panel
+        if (target.closest('.minidoro-btn')) {
             return;
         }
         
@@ -337,6 +385,17 @@ export default class PomodoroPlugin extends Plugin {
         } else {
             this.panelModeEl.addClass('mode-disabled');
         }
+
+        // Update play/pause button icon
+        if (this.playButtonEl) {
+            if (timerState === TimerState.Idle || timerState === TimerState.Paused) {
+                setIcon(this.playButtonEl, 'play');
+                this.playButtonEl.setAttribute('title', 'Start timer');
+            } else {
+                setIcon(this.playButtonEl, 'pause');
+                this.playButtonEl.setAttribute('title', 'Pause timer');
+            }
+        }
     }
     
     private getIdleTimeText = (): string => {
@@ -345,7 +404,7 @@ export default class PomodoroPlugin extends Plugin {
             : this.currentMode === TimerState.ShortBreak 
                 ? this.settings.shortBreakTime 
                 : this.settings.longBreakTime;
-        return `${time}:00`;
+        return `${time.toString().padStart(2, '0')}:00`;
     };
 
     private getModeText = (): string => {
@@ -545,6 +604,19 @@ class PomodoroSettingTab extends PluginSettingTab {
                     this.plugin.settings.language = value as Language;
                     await this.plugin.saveSettings();
                     this.display();
+                }));
+        
+        new Setting(containerEl)
+            .setName(settingsTrans.panelSize)
+            .setDesc(settingsTrans.panelSizeDesc)
+            .addDropdown(dropdown => dropdown
+                .addOption('small', settingsTrans.small)
+                .addOption('medium', settingsTrans.medium)
+                .addOption('large', settingsTrans.large)
+                .setValue(this.plugin.settings.panelSize)
+                .onChange(async (value) => {
+                    this.plugin.settings.panelSize = value as 'small' | 'medium' | 'large';
+                    await this.plugin.saveSettings();
                 }));
         
         new Setting(containerEl)
