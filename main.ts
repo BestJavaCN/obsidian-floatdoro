@@ -177,12 +177,7 @@ export default class PomodoroPlugin extends Plugin {
         this.pieButtonEl.setAttribute('aria-label', 'Minidoro timer');
         this.pieButtonEl.onclick = (event) => {
             event.stopPropagation();
-            if (this.isSessionComplete) {
-                this.acknowledgeSessionComplete();
-            } else {
-                // Toggle panel expand/collapse
-                this.togglePanel();
-            }
+            this.togglePanel();
         };
         
         // SVG Creation using setIcon
@@ -497,7 +492,7 @@ export default class PomodoroPlugin extends Plugin {
         const minutes = Math.floor(remainingTime / 60).toString().padStart(2, '0');
         const seconds = (remainingTime % 60).toString().padStart(2, '0');
         
-        if (timerState === TimerState.Idle) {
+        if (timerState === TimerState.Idle && !this.isSessionComplete) {
             this.panelTimeEl.setText(this.getIdleTimeText());
         } else {
             this.panelTimeEl.setText(`${minutes}:${seconds}`);
@@ -545,7 +540,15 @@ export default class PomodoroPlugin extends Plugin {
 
     private handlePauseResumeClick = () => {
         if (this.isSessionComplete) {
-            this.acknowledgeSessionComplete();
+            const shouldAutoStart = (this.currentMode === TimerState.Work && this.settings.autoStartBreaks) ||
+                (this.currentMode !== TimerState.Work && this.settings.autoStartPomodoros);
+            if (shouldAutoStart) {
+                this.acknowledgeSessionComplete();
+            } else {
+                this.isSessionComplete = false;
+                this.timer.reset();
+                this.timer.start(this.currentMode);
+            }
             return;
         }
 
@@ -574,8 +577,12 @@ export default class PomodoroPlugin extends Plugin {
         }
 
         if (this.isSessionComplete) {
-            this.acknowledgeSessionComplete();
-            return;
+            const shouldAutoStart = (this.currentMode === TimerState.Work && this.settings.autoStartBreaks) ||
+                (this.currentMode !== TimerState.Work && this.settings.autoStartPomodoros);
+            if (shouldAutoStart) {
+                this.acknowledgeSessionComplete();
+                return;
+            }
         }
 
         switch (this.currentMode) {
@@ -589,6 +596,7 @@ export default class PomodoroPlugin extends Plugin {
                 this.currentMode = TimerState.Work; 
                 break;
         }
+        this.isSessionComplete = false;
         new Notice(translation.switchedToMode.replace('{mode}', this.getModeText()));
         this.updateUI(0, 0);
     };
@@ -606,12 +614,15 @@ export default class PomodoroPlugin extends Plugin {
         const sessionType = this.getModeText();
         new Notice(translation.sessionCompleted.replace('{mode}', sessionType), 4000);
 
-        this.advanceToNextMode();
-        this.updateUI(0, 0);
+        const shouldAutoStart = (this.currentMode === TimerState.Work && this.settings.autoStartBreaks) ||
+            (this.currentMode !== TimerState.Work && this.settings.autoStartPomodoros);
 
-        setTimeout(() => {
-            this.acknowledgeSessionComplete();
-        }, 10000);
+        if (shouldAutoStart) {
+            this.advanceToNextMode();
+        } else {
+            this.timer.stop();
+        }
+        this.updateUI(0, 0);
     }
 
     private playNotificationSound() {
