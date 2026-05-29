@@ -540,6 +540,11 @@ export default class PomodoroPlugin extends Plugin {
 
     private handlePauseResumeClick = () => {
         if (this.isSessionComplete) {
+            if (this.timer.isRunning()) {
+                this.isSessionComplete = false;
+                this.timer.pause();
+                return;
+            }
             const shouldAutoStart = (this.currentMode === TimerState.Work && this.settings.autoStartBreaks) ||
                 (this.currentMode !== TimerState.Work && this.settings.autoStartPomodoros);
             if (shouldAutoStart) {
@@ -758,7 +763,7 @@ class PomodoroSettingTab extends PluginSettingTab {
             .setName(settingsTrans.workTime)
             .setDesc(settingsTrans.workTimeDesc)
             .addSlider(slider => slider
-                .setLimits(1, 60, 2)
+                .setLimits(1, 60, 1)
                 .setValue(this.plugin.settings.workTime)
                 .setDynamicTooltip()
                 .onChange(async (value) => { 
@@ -770,7 +775,7 @@ class PomodoroSettingTab extends PluginSettingTab {
             .setName(settingsTrans.shortBreakTime)
             .setDesc(settingsTrans.shortBreakTimeDesc)
             .addSlider(slider => slider
-                .setLimits(1, 30, 1)
+                .setLimits(1, 60, 1)
                 .setValue(this.plugin.settings.shortBreakTime)
                 .setDynamicTooltip()
                 .onChange(async (value) => { 
