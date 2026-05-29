@@ -8,6 +8,7 @@ export const translations: Record<Language, Translation> = {
         resetToSwitchMode: 'Reset the timer to switch modes',
         switchedToMode: 'Switched to {mode} mode',
         sessionCompleted: '{mode} session completed!',
+        timerNotRunning: 'Timer not running',
         notificationTitle: 'Minidoro - {mode} complete',
         notificationBody: 'Your {mode_lower} session is finished.',
         settings: {
@@ -47,6 +48,7 @@ export const translations: Record<Language, Translation> = {
         resetToSwitchMode: '请重置计时器以切换模式',
         switchedToMode: '已切换到{mode}模式',
         sessionCompleted: '{mode}时段完成！',
+        timerNotRunning: '番茄钟未运行',
         notificationTitle: 'Minidoro - {mode}完成',
         notificationBody: '您的{mode_lower}时段已结束。',
         settings: {

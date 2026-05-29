@@ -299,13 +299,13 @@ export default class PomodoroPlugin extends Plugin {
         setIcon(resetBtn, 'rotate-ccw');
         resetBtn.onclick = () => this.handleResetClick();
         
-        // Complete button (not implemented yet)
-        const completeBtn = buttonBar.createEl('button', { 
-            cls: 'minidoro-btn minidoro-btn-complete',
-            attr: { 'title': 'Complete session (not implemented)' }
-        });
-        setIcon(completeBtn, 'check');
-        completeBtn.onclick = () => {};
+        // Complete button
+		const completeBtn = buttonBar.createEl('button', { 
+			cls: 'minidoro-btn minidoro-btn-complete',
+			attr: { 'title': 'Complete session' }
+		});
+		setIcon(completeBtn, 'check');
+		completeBtn.onclick = () => this.handleCompleteClick();
 
         // Add drag event listeners to control panel only
         this.controlPanelEl.addEventListener('mousedown', this.onDragStart);
@@ -606,8 +606,50 @@ export default class PomodoroPlugin extends Plugin {
         this.updateUI(0, 0);
     };
 
-    private onTimerComplete() {
-        this.isSessionComplete = true;
+    private handleCompleteClick = () => {
+		const timerState = this.timer.getState();
+		const translation = this.getTranslation();
+
+		if (timerState === TimerState.Idle) {
+			new Notice(translation.timerNotRunning);
+			return;
+		}
+
+		this.timer.stop();
+
+		if (this.settings.playSound) {
+			this.playNotificationSound();
+		}
+		if (this.settings.showDesktopNotification) {
+			this.showDesktopNotification();
+		}
+
+		const sessionType = this.getModeText();
+		new Notice(translation.sessionCompleted.replace('{mode}', sessionType), 4000);
+
+		const wasWorkMode = this.currentMode === TimerState.Work;
+
+		if (wasWorkMode) {
+			this.completedPomodoros++;
+			this.currentMode = (this.completedPomodoros % this.settings.longBreakInterval === 0)
+				? TimerState.LongBreak
+				: TimerState.ShortBreak;
+		} else {
+			this.currentMode = TimerState.Work;
+		}
+
+		if (wasWorkMode ? this.settings.autoStartBreaks : this.settings.autoStartPomodoros) {
+			this.timer.start(this.currentMode);
+		}
+
+		this.isSessionComplete = false;
+		if (!this.timer.isRunning()) {
+			this.updateUI(this.timer.getRemainingTime(), this.timer.getTotalTime());
+		}
+	};
+
+	private onTimerComplete() {
+		this.isSessionComplete = true;
         if (this.settings.playSound) {
             this.playNotificationSound();
         }

@@ -17,7 +17,8 @@ export interface Translation {
     resetToSwitchMode: string;
     switchedToMode: string;
     sessionCompleted: string;
-    notificationTitle: string;
+		timerNotRunning: string;
+		notificationTitle: string;
     notificationBody: string;
     settings: {
         workTime: string;
