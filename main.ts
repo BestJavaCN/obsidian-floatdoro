@@ -11,13 +11,15 @@ export default class PomodoroPlugin extends Plugin {
     private isSessionComplete: boolean = false;
 
     // UI Elements
-    private containerEl: HTMLDivElement | null = null;
+    private containerEl: HTMLElement | null = null;
     private controlPanelEl: HTMLDivElement | null = null;
+    private pieButtonEl: HTMLButtonElement | null = null;
     private pieCircleEl: SVGCircleElement | null = null;
     private panelTimeEl: HTMLElement | null = null;
     private panelModeEl: HTMLDivElement | null = null;
     private playButtonEl: HTMLButtonElement | null = null;
     private isVisible = true;
+    private isPanelExpanded = false;
 
     // Drag related variables
     private isDragging = false;
@@ -86,6 +88,11 @@ export default class PomodoroPlugin extends Plugin {
         // Create floating panel after layout is ready
         this.app.workspace.onLayoutReady(() => {
             this.createFloatingPanel();
+            this.registerEvent(
+                this.app.workspace.on('active-leaf-change', () => {
+                    this.createFloatingPanel();
+                })
+            );
         });
     }
 
@@ -114,27 +121,61 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     private createFloatingPanel() {
-        // Remove existing panel if any
-        this.removeFloatingPanel();
-
-        // Create main container with size class
-        this.containerEl = document.body.createEl('div', { 
-            cls: `minidoro-container ${this.settings.panelSize}` 
-        });
-
-        // Load saved position if available
-        if (this.settings.panelX !== undefined && this.settings.panelY !== undefined) {
-            // Clear right and use left for positioning
-            this.containerEl.style.right = 'auto';
-            this.containerEl.style.left = `${this.settings.panelX}px`;
-            this.containerEl.style.top = `${this.settings.panelY}px`;
-            this.lastPosition = { x: this.settings.panelX, y: this.settings.panelY };
+        console.log('Minidoro: createFloatingPanel called');
+        
+        // Remove existing button if any (for switching between notes)
+        if (this.pieButtonEl) {
+            this.pieButtonEl.remove();
+            this.pieButtonEl = null;
+            this.pieCircleEl = null;
         }
 
-        // Create pie button
-        const pieButton = this.containerEl.createEl('button', { cls: 'minidoro-pie-button' });
-        pieButton.setAttribute('aria-label', 'Minidoro timer');
-        pieButton.onclick = (event) => {
+        // Find the active pane's title bar
+        const activeLeaf = this.app.workspace.activeLeaf;
+        if (!activeLeaf) {
+            console.log('Minidoro: No active leaf found');
+            return;
+        }
+
+        // Try different selectors to find the view header
+        let titleEl: Element | null = activeLeaf.view?.containerEl?.querySelector('.view-header') ?? null;
+        
+        // Alternative: try to find in the leaf's container
+        if (!titleEl) {
+            titleEl = activeLeaf.view?.containerEl?.closest('.workspace-leaf')?.querySelector('.view-header') ?? null;
+        }
+        
+        // Another alternative: look for the active leaf's header
+        if (!titleEl) {
+            const activeLeafEl = document.querySelector('.workspace-leaf.mod-active');
+            if (activeLeafEl) {
+                titleEl = activeLeafEl.querySelector('.view-header');
+            }
+        }
+        
+        if (!titleEl) {
+            console.log('Minidoro: Could not find view-header element');
+            return;
+        }
+
+        // Find the view actions container (right side button group)
+        const viewActions = titleEl.querySelector('.view-actions');
+        
+        // Create pie button with Obsidian's native view-action classes
+        this.pieButtonEl = document.createElement('button');
+        this.pieButtonEl.className = `minidoro-pie-button view-action clickable-icon ${this.settings.panelSize}`;
+        
+        // Insert before the first child of view-actions, or append to titleEl if view-actions not found
+        if (viewActions && viewActions.firstChild) {
+            viewActions.insertBefore(this.pieButtonEl, viewActions.firstChild);
+        } else {
+            titleEl.appendChild(this.pieButtonEl);
+        }
+        
+        // The container is now the pie button itself
+        this.containerEl = this.pieButtonEl;
+        this.pieButtonEl.setAttribute('aria-label', 'Minidoro timer');
+        this.pieButtonEl.onclick = (event) => {
             event.stopPropagation();
             if (this.isSessionComplete) {
                 this.acknowledgeSessionComplete();
@@ -145,28 +186,72 @@ export default class PomodoroPlugin extends Plugin {
         };
         
         // SVG Creation using setIcon
-        setIcon(pieButton, 'minidoro-timer');
+        setIcon(this.pieButtonEl, 'minidoro-timer');
 
         // Retrieve the reference to the dynamic circle element
-        this.pieCircleEl = pieButton.querySelector('.minidoro-progress-circle');
+        this.pieCircleEl = this.pieButtonEl.querySelector('.minidoro-progress-circle');
 
-        // Create control panel
-        this.createControlPanel();
+        // Create control panel only if it doesn't exist yet
+        if (!this.controlPanelEl) {
+            console.log('Minidoro: Creating control panel for the first time');
+            this.createControlPanel();
+        }
 
-        // Add drag event listeners
-        this.containerEl.addEventListener('mousedown', this.onDragStart);
-        document.addEventListener('mousemove', this.onDragMove);
-        document.addEventListener('mouseup', this.onDragEnd);
+        // Update only the pie button (panel doesn't need updating as it's already showing correct state)
+        const remainingTime = this.timer.getRemainingTime();
+        const totalTime = this.timer.getTotalTime();
+        this.updatePieButton(remainingTime, totalTime);
+    }
+    
+    private updatePieButton(remainingTime: number, totalTime: number) {
+        if (!this.pieCircleEl) return;
+        
+        const timerState = this.timer.getState();
+        
+        // Remove all mode classes first
+        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-break-mode');
+        this.pieCircleEl.removeClass('minidoro-progress-complete', 'minidoro-progress-idle');
 
-        // Update UI
-        this.updateUI(0, 0);
+        // Add appropriate mode class
+        const isWorkMode = this.currentMode === TimerState.Work;
+        const modeClass = isWorkMode ? 'minidoro-work-mode' : 'minidoro-break-mode';
+        this.pieCircleEl.addClass(modeClass);
+
+        // Update pie chart progress
+        const radius = this.pieCircleEl.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        
+        let progress: number;
+        if (timerState === TimerState.Idle) {
+            progress = 1; 
+            this.pieCircleEl.addClass('minidoro-progress-idle');
+        } else {
+            progress = totalTime > 0 ? remainingTime / totalTime : 0;
+            if (progress <= 0) {
+                this.pieCircleEl.addClass('minidoro-progress-complete');
+            }
+        }
+
+        this.pieCircleEl.style.setProperty('--progress', progress.toString());
+        this.pieCircleEl.style.setProperty('--circumference', circumference.toString());
+
+        // Add session complete animation
+        if (this.isSessionComplete) {
+            this.containerEl?.addClass('session-complete');
+        } else {
+            this.containerEl?.removeClass('session-complete');
+        }
     }
 
     private createControlPanel() {
-        if (!this.containerEl) return;
+        console.log('Minidoro: createControlPanel called, containerEl:', this.containerEl);
+        if (!this.containerEl) {
+            console.log('Minidoro: createControlPanel returning early - containerEl is null');
+            return;
+        }
         
-        // Create wrapper
-        const wrapperEl = this.containerEl.createEl('div', { cls: 'minidoro-control-panel-wrapper' });
+        // Create wrapper directly in body (not as child of button)
+        const wrapperEl = document.body.createEl('div', { cls: 'minidoro-control-panel-wrapper' });
         
         // Create actual control panel
         this.controlPanelEl = wrapperEl.createEl('div', { cls: 'minidoro-control-panel' });
@@ -190,6 +275,12 @@ export default class PomodoroPlugin extends Plugin {
         this.panelModeEl = headerEl.createEl('div', { 
             cls: 'minidoro-panel-mode'
         });
+        
+        // Set initial values for time and mode
+        this.panelTimeEl.setText(this.getIdleTimeText());
+        this.panelModeEl.setText(this.getModeText());
+        this.panelModeEl.addClass(this.currentMode === TimerState.Work ? 'minidoro-work-mode' : 'minidoro-break-mode');
+        this.panelModeEl.addClass('mode-enabled');
         
         // Click header to switch mode
         headerEl.onclick = () => this.handleCycleModeClick();
@@ -220,21 +311,28 @@ export default class PomodoroPlugin extends Plugin {
         });
         setIcon(completeBtn, 'check');
         completeBtn.onclick = () => {};
+
+        // Add drag event listeners to control panel only
+        this.controlPanelEl.addEventListener('mousedown', this.onDragStart);
+        document.addEventListener('mousemove', this.onDragMove);
+        document.addEventListener('mouseup', this.onDragEnd);
     }
 
     private removeFloatingPanel() {
         // Save position before removing
-        if (this.containerEl) {
-            const rect = this.containerEl.getBoundingClientRect();
+        if (this.controlPanelEl) {
+            const rect = this.controlPanelEl.getBoundingClientRect();
             this.settings.panelX = rect.left;
             this.settings.panelY = rect.top;
             void this.saveData(this.settings);
-            
-            this.containerEl.removeEventListener('mousedown', this.onDragStart);
+        }
+        
+        if (this.containerEl) {
             this.containerEl.remove();
         }
         
-        this.containerEl = this.controlPanelEl = this.pieCircleEl = this.panelTimeEl = this.panelModeEl = null;
+        // Only remove button-related elements, keep control panel for reuse
+        this.containerEl = this.pieButtonEl = this.pieCircleEl = null;
         this.isVisible = false;
     }
 
@@ -256,53 +354,75 @@ export default class PomodoroPlugin extends Plugin {
 
     private togglePanel() {
         // Toggle panel expand/collapse
-        const pieButton = this.containerEl?.querySelector('.minidoro-pie-button');
-        const panelWrapper = this.containerEl?.querySelector('.minidoro-control-panel-wrapper');
+        if (!this.pieButtonEl || !this.controlPanelEl) return;
         
-        if (pieButton && panelWrapper) {
-            const isExpanded = pieButton.classList.contains('expanded');
-            
-            if (isExpanded) {
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+        
+        if (panelWrapper) {
+            if (this.isPanelExpanded) {
                 // Collapse panel
-                pieButton.classList.remove('expanded');
+                this.pieButtonEl.classList.remove('expanded');
                 panelWrapper.classList.remove('expanded');
+                this.isPanelExpanded = false;
             } else {
-                // Expand panel
-                pieButton.classList.add('expanded');
+                // Expand panel - calculate position below button
+                this.pieButtonEl.classList.add('expanded');
                 panelWrapper.classList.add('expanded');
+                
+                // Calculate position based on pie button
+                const buttonRect = this.pieButtonEl.getBoundingClientRect();
+                const panelWidth = panelWrapper.offsetWidth;
+                
+                // Position panel centered below button
+                const panelLeft = buttonRect.left + buttonRect.width / 2 - panelWidth / 2;
+                const panelTop = buttonRect.bottom + 8; // 8px gap
+                
+                // Set panel position
+                panelWrapper.style.position = 'fixed';
+                panelWrapper.style.left = `${panelLeft}px`;
+                panelWrapper.style.top = `${panelTop}px`;
+                panelWrapper.style.right = 'auto';
+                
+                this.isPanelExpanded = true;
             }
         }
     }
 
     private onDragStart = (event: MouseEvent) => {
-        // Allow dragging from anywhere on the container
+        // Allow dragging from control panel only
         const target = event.target as HTMLElement;
         // Prevent dragging when clicking buttons inside the panel
         if (target.closest('.minidoro-btn')) {
             return;
         }
         
-        this.isDragging = true;
-        this.containerEl?.addClass('dragging');
+        // Get the panel wrapper (the fixed positioned container)
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+        if (!panelWrapper) return;
         
-        const rect = this.containerEl?.getBoundingClientRect();
-        if (rect) {
-            this.dragOffset = {
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top
-            };
-        }
+        this.isDragging = true;
+        this.controlPanelEl?.addClass('dragging');
+        
+        const rect = panelWrapper.getBoundingClientRect();
+        this.dragOffset = {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+        };
     };
 
     private onDragMove = (event: MouseEvent) => {
-        if (!this.isDragging || !this.containerEl) return;
+        if (!this.isDragging) return;
+        
+        // Get the panel wrapper (the fixed positioned container)
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+        if (!panelWrapper) return;
 
         const x = event.clientX - this.dragOffset.x;
         const y = event.clientY - this.dragOffset.y;
 
         // Ensure panel stays within viewport
-        const maxX = window.innerWidth - (this.containerEl.offsetWidth || 150);
-        const maxY = window.innerHeight - (this.containerEl.offsetHeight || 100);
+        const maxX = window.innerWidth - (panelWrapper.offsetWidth || 150);
+        const maxY = window.innerHeight - (panelWrapper.offsetHeight || 100);
         
         this.lastPosition = {
             x: Math.max(0, Math.min(x, maxX)),
@@ -310,16 +430,17 @@ export default class PomodoroPlugin extends Plugin {
         };
 
         // Clear right and use left for positioning
-        this.containerEl.style.right = 'auto';
-        this.containerEl.style.left = `${this.lastPosition.x}px`;
-        this.containerEl.style.top = `${this.lastPosition.y}px`;
+        panelWrapper.style.right = 'auto';
+        panelWrapper.style.left = `${this.lastPosition.x}px`;
+        panelWrapper.style.top = `${this.lastPosition.y}px`;
+        panelWrapper.style.position = 'fixed';
     };
 
     private onDragEnd = () => {
         if (!this.isDragging) return;
         
         this.isDragging = false;
-        this.containerEl?.removeClass('dragging');
+        this.controlPanelEl?.removeClass('dragging');
         
         // Save position to settings
         this.settings.panelX = this.lastPosition.x;
@@ -328,7 +449,11 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private updateUI(remainingTime: number, totalTime: number) {
-        if (!this.pieCircleEl || !this.panelTimeEl || !this.panelModeEl) return;
+        console.log('Minidoro: updateUI called - pieCircleEl:', !!this.pieCircleEl, ', panelTimeEl:', !!this.panelTimeEl, ', panelModeEl:', !!this.panelModeEl);
+        if (!this.pieCircleEl || !this.panelTimeEl || !this.panelModeEl) {
+            console.log('Minidoro: updateUI returning early due to missing elements');
+            return;
+        }
 
         const timerState = this.timer.getState();
         
@@ -436,9 +561,8 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private handleResetClick = () => {
-        this.timer.reset();
         this.isSessionComplete = false;
-        this.updateUI(0, 0);
+        this.timer.reset(); // reset() already calls updateUI via onTick callback
     };
 
     private handleCycleModeClick = () => {

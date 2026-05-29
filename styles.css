@@ -1,16 +1,14 @@
 /* Container for our timer icon */
 .minidoro-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10000;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  z-index: 10000;
 }
 
 /* Dragging state */
-.minidoro-container.dragging {
+.minidoro-control-panel.dragging {
   opacity: 0.8;
   cursor: grabbing;
 }
@@ -18,38 +16,18 @@
 /* The main icon button - sits above the panel */
 .minidoro-pie-button {
   position: relative;
-  background-color: transparent !important;
-  background-image: none !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  border-radius: 0;
-  color: var(--icon-color);
-  opacity: var(--icon-opacity);
-  height: 44px;
-  width: 44px;
-  border: none !important;
-  cursor: pointer;
-  box-shadow: none !important;
-  outline: none !important;
-  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-.minidoro-pie-button:hover,
-.minidoro-pie-button:active,
-.minidoro-pie-button:focus {
-  opacity: 1;
+.minidoro-pie-button:hover .minidoro-pie-chart {
   transform: scale(1.05);
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
 }
 
 .minidoro-pie-chart {
-  width: 44px;
-  height: 44px;
+  width: 24px;
+  height: 24px;
   transition: transform 0.3s ease;
   overflow: visible;
 }
@@ -90,7 +68,7 @@
 }
 
 /* Session complete animation */
-.minidoro-container.session-complete .minidoro-pie-chart {
+.minidoro-pie-button.session-complete .minidoro-pie-chart {
   animation: minimalCirclePulse 1s ease-in-out infinite;
 }
 
@@ -105,33 +83,33 @@
 
 /* Control panel - fixed size 1:1 square - default medium size */
 .minidoro-control-panel-wrapper {
-  position: absolute;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: -1;
+  position: fixed;
+  z-index: 9999;
   width: 120px;
   opacity: 0;
-  transform: translateX(-50%) translateY(-10px);
+  transform: translateY(-10px);
   transition: opacity 0.2s ease, transform 0.2s ease;
   pointer-events: none;
+  display: none;
 }
 
 /* Small size */
+.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper,
 .minidoro-container.small .minidoro-control-panel-wrapper {
   width: 100px;
 }
 
 /* Large size */
+.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper,
 .minidoro-container.large .minidoro-control-panel-wrapper {
   width: 140px;
 }
 
 .minidoro-control-panel-wrapper.expanded {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
   pointer-events: auto;
-  z-index: 9999;
+  display: block;
 }
 
 /* Control panel content with 1:1 aspect ratio */
@@ -150,12 +128,14 @@
 }
 
 /* Small panel adjustments */
+.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-control-panel,
 .minidoro-container.small .minidoro-control-panel {
   gap: 4px;
   padding: 6px;
 }
 
 /* Large panel adjustments */
+.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-control-panel,
 .minidoro-container.large .minidoro-control-panel {
   gap: 8px;
   padding: 10px;
@@ -198,29 +178,35 @@
 }
 
 /* Small size adjustments */
+.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-panel-header,
 .minidoro-container.small .minidoro-panel-header {
   padding: 8px 6px;
   border-radius: 8px;
 }
 
+.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-panel-time,
 .minidoro-container.small .minidoro-panel-time {
   font-size: 16px;
 }
 
+.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-panel-mode,
 .minidoro-container.small .minidoro-panel-mode {
   font-size: 10px;
 }
 
 /* Large size adjustments */
+.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-panel-header,
 .minidoro-container.large .minidoro-panel-header {
   padding: 14px 10px;
   border-radius: 12px;
 }
 
+.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-panel-time,
 .minidoro-container.large .minidoro-panel-time {
   font-size: 24px;
 }
 
+.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-panel-mode,
 .minidoro-container.large .minidoro-panel-mode {
   font-size: 14px;
 }
@@ -265,24 +251,28 @@
 }
 
 /* Small size button adjustments */
+.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-btn,
 .minidoro-container.small .minidoro-btn {
   width: 24px;
   height: 24px;
   border-radius: 5px;
 }
 
+.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-btn svg,
 .minidoro-container.small .minidoro-btn svg {
   width: 16px;
   height: 16px;
 }
 
 /* Large size button adjustments */
+.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-btn,
 .minidoro-container.large .minidoro-btn {
   width: 32px;
   height: 32px;
   border-radius: 7px;
 }
 
+.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-btn svg,
 .minidoro-container.large .minidoro-btn svg {
   width: 24px;
   height: 24px;
@@ -321,7 +311,7 @@
     stroke-width: 5;
   }
   
-  .minidoro-container.session-complete .minidoro-progress-circle {
+  .minidoro-pie-button.session-complete .minidoro-progress-circle {
     stroke-width: 6;
   }
   
