@@ -596,8 +596,8 @@ export default class PomodoroPlugin extends Plugin {
 
     private handleResetClick = () => {
         if (this.timer.isOvertime()) {
-            this.timer.stop();
             this.isSessionComplete = false;
+            this.timer.stop();
             return;
         }
         this.isSessionComplete = false;
