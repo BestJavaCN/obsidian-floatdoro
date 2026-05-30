@@ -18,6 +18,7 @@ export default class PomodoroPlugin extends Plugin {
     private panelTimeEl: HTMLElement | null = null;
     private panelModeEl: HTMLDivElement | null = null;
     private panelHeaderEl: HTMLDivElement | null = null;
+    private panelWrapperEl: HTMLElement | null = null;
     private playButtonEl: HTMLButtonElement | null = null;
     private isVisible = true;
     private isPanelExpanded = false;
@@ -115,10 +116,13 @@ export default class PomodoroPlugin extends Plugin {
     
     private updatePanelSize() {
         if (!this.containerEl) return;
-        // Remove existing size classes
         this.containerEl.classList.remove('small', 'medium', 'large');
-        // Add current size class
         this.containerEl.classList.add(this.settings.panelSize);
+
+        if (this.panelWrapperEl) {
+            this.panelWrapperEl.classList.remove('small', 'medium', 'large');
+            this.panelWrapperEl.classList.add(this.settings.panelSize);
+        }
     }
 
     private createFloatingPanel() {
@@ -261,7 +265,8 @@ export default class PomodoroPlugin extends Plugin {
         }
         
         // Create wrapper directly in body (not as child of button)
-        const wrapperEl = document.body.createEl('div', { cls: 'minidoro-control-panel-wrapper' });
+        const wrapperEl = document.body.createEl('div', { cls: `minidoro-control-panel-wrapper ${this.settings.panelSize}` });
+        this.panelWrapperEl = wrapperEl;
         
         // Create actual control panel
         this.controlPanelEl = wrapperEl.createEl('div', { cls: 'minidoro-control-panel' });
@@ -373,6 +378,7 @@ export default class PomodoroPlugin extends Plugin {
         this.panelTimeEl = null;
         this.panelModeEl = null;
         this.panelHeaderEl = null;
+        this.panelWrapperEl = null;
         this.playButtonEl = null;
         this.isVisible = false;
         this.isPanelExpanded = false;

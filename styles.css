@@ -117,14 +117,12 @@
 }
 
 /* Small size */
-.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper,
-.minidoro-container.small .minidoro-control-panel-wrapper {
+.minidoro-control-panel-wrapper.small {
   width: 100px;
 }
 
 /* Large size */
-.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper,
-.minidoro-container.large .minidoro-control-panel-wrapper {
+.minidoro-control-panel-wrapper.large {
   width: 140px;
 }
 
@@ -151,15 +149,13 @@
 }
 
 /* Small panel adjustments */
-.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-control-panel,
-.minidoro-container.small .minidoro-control-panel {
+.minidoro-control-panel-wrapper.small .minidoro-control-panel {
   gap: 4px;
   padding: 6px;
 }
 
 /* Large panel adjustments */
-.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-control-panel,
-.minidoro-container.large .minidoro-control-panel {
+.minidoro-control-panel-wrapper.large .minidoro-control-panel {
   gap: 8px;
   padding: 10px;
 }
@@ -248,36 +244,30 @@
 }
 
 /* Small size adjustments */
-.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-panel-header,
-.minidoro-container.small .minidoro-panel-header {
+.minidoro-control-panel-wrapper.small .minidoro-panel-header {
   padding: 8px 6px;
   border-radius: 8px;
 }
 
-.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-panel-time,
-.minidoro-container.small .minidoro-panel-time {
+.minidoro-control-panel-wrapper.small .minidoro-panel-time {
   font-size: 16px;
 }
 
-.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-panel-mode,
-.minidoro-container.small .minidoro-panel-mode {
+.minidoro-control-panel-wrapper.small .minidoro-panel-mode {
   font-size: 10px;
 }
 
 /* Large size adjustments */
-.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-panel-header,
-.minidoro-container.large .minidoro-panel-header {
+.minidoro-control-panel-wrapper.large .minidoro-panel-header {
   padding: 14px 10px;
   border-radius: 12px;
 }
 
-.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-panel-time,
-.minidoro-container.large .minidoro-panel-time {
+.minidoro-control-panel-wrapper.large .minidoro-panel-time {
   font-size: 24px;
 }
 
-.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-panel-mode,
-.minidoro-container.large .minidoro-panel-mode {
+.minidoro-control-panel-wrapper.large .minidoro-panel-mode {
   font-size: 14px;
 }
 
@@ -321,29 +311,25 @@
 }
 
 /* Small size button adjustments */
-.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-btn,
-.minidoro-container.small .minidoro-btn {
+.minidoro-control-panel-wrapper.small .minidoro-btn {
   width: 24px;
   height: 24px;
   border-radius: 5px;
 }
 
-.minidoro-pie-button.small ~ .minidoro-control-panel-wrapper .minidoro-btn svg,
-.minidoro-container.small .minidoro-btn svg {
+.minidoro-control-panel-wrapper.small .minidoro-btn svg {
   width: 16px;
   height: 16px;
 }
 
 /* Large size button adjustments */
-.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-btn,
-.minidoro-container.large .minidoro-btn {
+.minidoro-control-panel-wrapper.large .minidoro-btn {
   width: 32px;
   height: 32px;
   border-radius: 7px;
 }
 
-.minidoro-pie-button.large ~ .minidoro-control-panel-wrapper .minidoro-btn svg,
-.minidoro-container.large .minidoro-btn svg {
+.minidoro-control-panel-wrapper.large .minidoro-btn svg {
   width: 24px;
   height: 24px;
 }
