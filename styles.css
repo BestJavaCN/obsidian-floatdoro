@@ -33,10 +33,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible !important;
 }
 
-.minidoro-pie-button:hover .minidoro-pie-chart {
-  transform: scale(1.05);
+.minidoro-pie-button:hover .minidoro-progress-circle {
+  stroke-width: 4;
 }
 
 .minidoro-pie-chart {
@@ -58,7 +59,7 @@
 }
 
 .minidoro-progress-circle {
-  transition: stroke-dashoffset 0.3s linear, stroke 0.3s ease;
+  transition: stroke-dashoffset 0.3s linear, stroke 0.3s ease, stroke-width 0.3s ease;
   stroke-linecap: round;
   stroke-width: 3;
   stroke-dasharray: var(--circumference, 50.27) var(--circumference, 50.27);
@@ -90,16 +91,16 @@
 }
 
 /* Session complete animation */
-.minidoro-pie-button.session-complete .minidoro-pie-chart {
+.minidoro-pie-button.session-complete .minidoro-progress-circle {
   animation: minimalCirclePulse 1s ease-in-out infinite;
 }
 
 @keyframes minimalCirclePulse {
   0%, 100% { 
-    transform: scale(1);
+    stroke-width: 3;
   }
   50% { 
-    transform: scale(1.08);
+    stroke-width: 5;
   }
 }
 
