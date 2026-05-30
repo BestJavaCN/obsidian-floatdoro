@@ -653,15 +653,17 @@ export default class PomodoroPlugin extends Plugin {
 
 		this.timer.stop();
 
-		if (this.settings.playSound) {
-			this.playNotificationSound();
-		}
-		if (this.settings.showDesktopNotification) {
-			this.showDesktopNotification();
-		}
+		if (!this.isSessionComplete) {
+			if (this.settings.playSound) {
+				this.playNotificationSound();
+			}
+			if (this.settings.showDesktopNotification) {
+				this.showDesktopNotification();
+			}
 
-		const sessionType = this.getModeText();
-		new Notice(translation.sessionCompleted.replace('{mode}', sessionType), 4000);
+			const sessionType = this.getModeText();
+			new Notice(translation.sessionCompleted.replace('{mode}', sessionType), 4000);
+		}
 
 		const wasWorkMode = this.currentMode === TimerState.Work;
 
