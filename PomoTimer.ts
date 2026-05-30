@@ -99,13 +99,13 @@ export class PomoTimer {
         if (this.remainingTime <= 0) {
             switch (this.state) {
                 case TimerState.Work: 
-                    this.remainingTime = this.settings.workTime; 
+                    this.remainingTime = this.settings.workTime * 60; 
                     break;
                 case TimerState.ShortBreak: 
-                    this.remainingTime = this.settings.shortBreakTime; 
+                    this.remainingTime = this.settings.shortBreakTime * 60; 
                     break;
                 case TimerState.LongBreak: 
-                    this.remainingTime = this.settings.longBreakTime; 
+                    this.remainingTime = this.settings.longBreakTime * 60; 
                     break;
             }
             this.totalTime = this.remainingTime;
@@ -281,9 +281,9 @@ export interface PomodoroSettings {
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {
-    workTime: 25,  // seconds
-    shortBreakTime: 5,  // seconds
-    longBreakTime: 15,  // seconds
+    workTime: 25,  // minutes
+    shortBreakTime: 5,  // minutes
+    longBreakTime: 15,  // minutes
     longBreakInterval: 4,
     autoStartBreaks: false,
     autoStartPomodoros: false,

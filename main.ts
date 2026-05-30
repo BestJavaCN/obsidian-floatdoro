@@ -130,7 +130,6 @@ export default class PomodoroPlugin extends Plugin {
             return;
         }
 
-        console.log('Minidoro: createFloatingPanel called');
         
         // Remove existing button if any (for switching between notes)
         if (this.pieButtonEl) {
@@ -142,7 +141,6 @@ export default class PomodoroPlugin extends Plugin {
         // Find the active pane's title bar
         const activeLeaf = this.app.workspace.activeLeaf;
         if (!activeLeaf) {
-            console.log('Minidoro: No active leaf found');
             return;
         }
 
@@ -163,7 +161,6 @@ export default class PomodoroPlugin extends Plugin {
         }
         
         if (!titleEl) {
-            console.log('Minidoro: Could not find view-header element');
             return;
         }
 
@@ -197,7 +194,6 @@ export default class PomodoroPlugin extends Plugin {
 
         // Create control panel only if it doesn't exist yet
         if (!this.controlPanelEl) {
-            console.log('Minidoro: Creating control panel for the first time');
             this.createControlPanel();
         }
 
@@ -263,9 +259,7 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     private createControlPanel() {
-        console.log('Minidoro: createControlPanel called, containerEl:', this.containerEl);
         if (!this.containerEl) {
-            console.log('Minidoro: createControlPanel returning early - containerEl is null');
             return;
         }
         
