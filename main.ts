@@ -646,7 +646,7 @@ export default class PomodoroPlugin extends Plugin {
 		const timerState = this.timer.getState();
 		const translation = this.getTranslation();
 
-		if (timerState === TimerState.Idle && !this.timer.isOvertime()) {
+		if (timerState === TimerState.Idle && !this.timer.isOvertime() && !this.isSessionComplete) {
 			new Notice(translation.timerNotRunning);
 			return;
 		}
