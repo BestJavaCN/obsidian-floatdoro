@@ -689,12 +689,6 @@ export default class PomodoroPlugin extends Plugin {
 	private onTimerComplete() {
 		this.isSessionComplete = true;
 
-        if (this.settings.enableOvertime) {
-            this.timer.startOvertime();
-            this.updateUI(0, 0);
-            return;
-        }
-
         if (this.settings.playSound) {
             this.playNotificationSound();
         }
@@ -705,6 +699,12 @@ export default class PomodoroPlugin extends Plugin {
         const translation = this.getTranslation();
         const sessionType = this.getModeText();
         new Notice(translation.sessionCompleted.replace('{mode}', sessionType), 4000);
+
+        if (this.settings.enableOvertime) {
+            this.timer.startOvertime();
+            this.updateUI(0, 0);
+            return;
+        }
 
         const shouldAutoStart = (this.currentMode === TimerState.Work && this.settings.autoStartBreaks) ||
             (this.currentMode !== TimerState.Work && this.settings.autoStartPomodoros);
