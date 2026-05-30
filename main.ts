@@ -229,6 +229,11 @@ export default class PomodoroPlugin extends Plugin {
             } else {
                 this.panelHeaderEl.removeClass('minidoro-spinning');
             }
+            if (isOvertime) {
+                this.panelHeaderEl.addClass('minidoro-overtime-pulse');
+            } else {
+                this.panelHeaderEl.removeClass('minidoro-overtime-pulse');
+            }
         }
 
         const radius = this.pieCircleEl.r.baseVal.value;
@@ -508,14 +513,17 @@ export default class PomodoroPlugin extends Plugin {
         if (isOvertime) {
             this.pieCircleEl.addClass('minidoro-overtime-mode');
             this.panelModeEl.addClass('minidoro-overtime-mode');
-            if (this.panelHeaderEl) this.panelHeaderEl.addClass('minidoro-overtime-mode');
+            if (this.panelHeaderEl) {
+                this.panelHeaderEl.addClass('minidoro-overtime-mode');
+                this.panelHeaderEl.addClass(this.getModeClass());
+            }
         } else {
             const modeClass = this.getModeClass();
             this.pieCircleEl.addClass(modeClass);
             this.panelModeEl.addClass(modeClass);
             if (this.panelHeaderEl) {
-            this.panelHeaderEl.addClass(modeClass);
-        }
+                this.panelHeaderEl.addClass(modeClass);
+            }
         }
 
         if (this.panelHeaderEl) {
@@ -523,6 +531,11 @@ export default class PomodoroPlugin extends Plugin {
                 this.panelHeaderEl.addClass('minidoro-spinning');
             } else {
                 this.panelHeaderEl.removeClass('minidoro-spinning');
+            }
+            if (isOvertime) {
+                this.panelHeaderEl.addClass('minidoro-overtime-pulse');
+            } else {
+                this.panelHeaderEl.removeClass('minidoro-overtime-pulse');
             }
         }
 
