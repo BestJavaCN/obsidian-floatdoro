@@ -219,9 +219,17 @@ export default class PomodoroPlugin extends Plugin {
             this.pieCircleEl.addClass(modeClass);
         }
 
+        if (this.panelHeaderEl) {
+            if (this.currentMode === TimerState.Work && timerState === TimerState.Work) {
+                this.panelHeaderEl.addClass('minidoro-spinning');
+            } else {
+                this.panelHeaderEl.removeClass('minidoro-spinning');
+            }
+        }
+
         const radius = this.pieCircleEl.r.baseVal.value;
         const circumference = 2 * Math.PI * radius;
-        
+
         let progress: number;
         if (isOvertime) {
             progress = 1;
@@ -499,7 +507,17 @@ export default class PomodoroPlugin extends Plugin {
             const modeClass = this.getModeClass();
             this.pieCircleEl.addClass(modeClass);
             this.panelModeEl.addClass(modeClass);
-            if (this.panelHeaderEl) this.panelHeaderEl.addClass(modeClass);
+            if (this.panelHeaderEl) {
+            this.panelHeaderEl.addClass(modeClass);
+        }
+        }
+
+        if (this.panelHeaderEl) {
+            if (this.currentMode === TimerState.Work && timerState === TimerState.Work) {
+                this.panelHeaderEl.addClass('minidoro-spinning');
+            } else {
+                this.panelHeaderEl.removeClass('minidoro-spinning');
+            }
         }
 
         const radius = this.pieCircleEl.r.baseVal.value;
