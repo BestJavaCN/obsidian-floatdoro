@@ -20,6 +20,7 @@ export default class PomodoroPlugin extends Plugin {
     private playButtonEl: HTMLButtonElement | null = null;
     private isVisible = true;
     private isPanelExpanded = false;
+    private isDisabled = false;
 
     // Drag related variables
     private isDragging = false;
@@ -74,7 +75,7 @@ export default class PomodoroPlugin extends Plugin {
 
         this.addCommand({
             id: 'toggle-visibility',
-            name: 'Toggle timer visibility',
+            name: '启用/禁用番茄钟',
             callback: () => {
                 this.toggleVisibility();
             }
@@ -97,8 +98,7 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     onunload() {
-        this.removeFloatingPanel();
-        this.timer.stop();
+        this.destroyFloatingPanel();
     }
 
     async loadSettings() { 
@@ -121,6 +121,10 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     private createFloatingPanel() {
+        if (this.isDisabled) {
+            return;
+        }
+
         console.log('Minidoro: createFloatingPanel called');
         
         // Remove existing button if any (for switching between notes)
@@ -202,22 +206,26 @@ export default class PomodoroPlugin extends Plugin {
         if (!this.pieCircleEl) return;
         
         const timerState = this.timer.getState();
+        const isOvertime = this.timer.isOvertime();
         
-        // Remove all mode classes first
-        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-break-mode');
+        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-break-mode', 'minidoro-overtime-mode');
         this.pieCircleEl.removeClass('minidoro-progress-complete', 'minidoro-progress-idle');
 
-        // Add appropriate mode class
-        const isWorkMode = this.currentMode === TimerState.Work;
-        const modeClass = isWorkMode ? 'minidoro-work-mode' : 'minidoro-break-mode';
-        this.pieCircleEl.addClass(modeClass);
+        if (isOvertime) {
+            this.pieCircleEl.addClass('minidoro-overtime-mode');
+        } else {
+            const isWorkMode = this.currentMode === TimerState.Work;
+            const modeClass = isWorkMode ? 'minidoro-work-mode' : 'minidoro-break-mode';
+            this.pieCircleEl.addClass(modeClass);
+        }
 
-        // Update pie chart progress
         const radius = this.pieCircleEl.r.baseVal.value;
         const circumference = 2 * Math.PI * radius;
         
         let progress: number;
-        if (timerState === TimerState.Idle) {
+        if (isOvertime) {
+            progress = 1;
+        } else if (timerState === TimerState.Idle) {
             progress = 1; 
             this.pieCircleEl.addClass('minidoro-progress-idle');
         } else {
@@ -230,7 +238,6 @@ export default class PomodoroPlugin extends Plugin {
         this.pieCircleEl.style.setProperty('--progress', progress.toString());
         this.pieCircleEl.style.setProperty('--circumference', circumference.toString());
 
-        // Add session complete animation
         if (this.isSessionComplete) {
             this.containerEl?.addClass('session-complete');
         } else {
@@ -313,38 +320,49 @@ export default class PomodoroPlugin extends Plugin {
         document.addEventListener('mouseup', this.onDragEnd);
     }
 
-    private removeFloatingPanel() {
-        // Save position before removing
+    private toggleVisibility() {
+        if (!this.containerEl || !this.isVisible) {
+            this.isDisabled = false;
+            this.createFloatingPanel();
+            this.isVisible = true;
+        } else {
+            this.destroyFloatingPanel();
+        }
+    }
+
+    private destroyFloatingPanel() {
+        this.isDisabled = true;
+        this.timer.stop();
+        this.isSessionComplete = false;
+
         if (this.controlPanelEl) {
             const rect = this.controlPanelEl.getBoundingClientRect();
             this.settings.panelX = rect.left;
             this.settings.panelY = rect.top;
             void this.saveData(this.settings);
         }
-        
+
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper');
+        if (panelWrapper) {
+            panelWrapper.remove();
+        }
+
         if (this.containerEl) {
             this.containerEl.remove();
         }
-        
-        // Only remove button-related elements, keep control panel for reuse
-        this.containerEl = this.pieButtonEl = this.pieCircleEl = null;
-        this.isVisible = false;
-    }
 
-    private toggleVisibility() {
-        if (!this.containerEl) {
-            // Create panel if it doesn't exist
-            this.createFloatingPanel();
-        } else {
-            // Toggle visibility
-            if (this.isVisible) {
-                this.containerEl.style.display = 'none';
-                this.isVisible = false;
-            } else {
-                this.containerEl.style.display = 'flex';
-                this.isVisible = true;
-            }
-        }
+        document.removeEventListener('mousemove', this.onDragMove);
+        document.removeEventListener('mouseup', this.onDragEnd);
+
+        this.containerEl = null;
+        this.pieButtonEl = null;
+        this.pieCircleEl = null;
+        this.controlPanelEl = null;
+        this.panelTimeEl = null;
+        this.panelModeEl = null;
+        this.playButtonEl = null;
+        this.isVisible = false;
+        this.isPanelExpanded = false;
     }
 
     private togglePanel() {
@@ -444,31 +462,34 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private updateUI(remainingTime: number, totalTime: number) {
-        console.log('Minidoro: updateUI called - pieCircleEl:', !!this.pieCircleEl, ', panelTimeEl:', !!this.panelTimeEl, ', panelModeEl:', !!this.panelModeEl);
         if (!this.pieCircleEl || !this.panelTimeEl || !this.panelModeEl) {
-            console.log('Minidoro: updateUI returning early due to missing elements');
             return;
         }
 
         const timerState = this.timer.getState();
+        const isOvertime = this.timer.isOvertime();
         
-        // Remove all mode classes first
-        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-break-mode');
-        this.panelModeEl.removeClass('minidoro-work-mode', 'minidoro-break-mode', 'mode-enabled', 'mode-disabled');
+        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-break-mode', 'minidoro-overtime-mode');
+        this.panelModeEl.removeClass('minidoro-work-mode', 'minidoro-break-mode', 'minidoro-overtime-mode', 'mode-enabled', 'mode-disabled');
         this.pieCircleEl.removeClass('minidoro-progress-complete', 'minidoro-progress-idle');
 
-        // Add appropriate mode class
-        const isWorkMode = this.currentMode === TimerState.Work;
-        const modeClass = isWorkMode ? 'minidoro-work-mode' : 'minidoro-break-mode';
-        this.pieCircleEl.addClass(modeClass);
-        this.panelModeEl.addClass(modeClass);
+        if (isOvertime) {
+            this.pieCircleEl.addClass('minidoro-overtime-mode');
+            this.panelModeEl.addClass('minidoro-overtime-mode');
+        } else {
+            const isWorkMode = this.currentMode === TimerState.Work;
+            const modeClass = isWorkMode ? 'minidoro-work-mode' : 'minidoro-break-mode';
+            this.pieCircleEl.addClass(modeClass);
+            this.panelModeEl.addClass(modeClass);
+        }
 
-        // Update pie chart progress
         const radius = this.pieCircleEl.r.baseVal.value;
         const circumference = 2 * Math.PI * radius;
         
         let progress: number;
-        if (timerState === TimerState.Idle) {
+        if (isOvertime) {
+            progress = 1;
+        } else if (timerState === TimerState.Idle) {
             progress = 1; 
             this.pieCircleEl.addClass('minidoro-progress-idle');
         } else {
@@ -481,18 +502,18 @@ export default class PomodoroPlugin extends Plugin {
         this.pieCircleEl.style.setProperty('--progress', progress.toString());
         this.pieCircleEl.style.setProperty('--circumference', circumference.toString());
 
-        // Add session complete animation
         if (this.isSessionComplete) {
             this.containerEl?.addClass('session-complete');
         } else {
             this.containerEl?.removeClass('session-complete');
         }
 
-        // Update time display
         const minutes = Math.floor(remainingTime / 60).toString().padStart(2, '0');
         const seconds = (remainingTime % 60).toString().padStart(2, '0');
         
-        if (timerState === TimerState.Idle && !this.isSessionComplete) {
+        if (isOvertime) {
+            this.panelTimeEl.setText(`${minutes}:${seconds}`);
+        } else if (timerState === TimerState.Idle && !this.isSessionComplete) {
             this.panelTimeEl.setText(this.getIdleTimeText());
         } else {
             this.panelTimeEl.setText(`${minutes}:${seconds}`);
@@ -500,15 +521,17 @@ export default class PomodoroPlugin extends Plugin {
 
         this.panelModeEl.setText(this.getModeText());
 
-        if (timerState === TimerState.Idle && !this.timer.isRunning()) {
+        if (isOvertime || (timerState === TimerState.Idle && !this.timer.isRunning())) {
             this.panelModeEl.addClass('mode-enabled');
         } else {
             this.panelModeEl.addClass('mode-disabled');
         }
 
-        // Update play/pause button icon
         if (this.playButtonEl) {
-            if (timerState === TimerState.Idle || timerState === TimerState.Paused) {
+            if (isOvertime && timerState === TimerState.Overtime) {
+                setIcon(this.playButtonEl, 'pause');
+                this.playButtonEl.setAttribute('title', 'Pause timer');
+            } else if (timerState === TimerState.Idle || timerState === TimerState.Paused) {
                 setIcon(this.playButtonEl, 'play');
                 this.playButtonEl.setAttribute('title', 'Start timer');
             } else {
@@ -529,6 +552,9 @@ export default class PomodoroPlugin extends Plugin {
 
     private getModeText = (): string => {
         const translation = t(this.settings.language);
+        if (this.timer.isOvertime()) {
+            return translation.overtime;
+        }
         return this.currentMode === TimerState.Work 
             ? translation.focus 
             : this.currentMode === TimerState.ShortBreak 
@@ -539,7 +565,7 @@ export default class PomodoroPlugin extends Plugin {
     private getTranslation = () => t(this.settings.language);
 
     private handlePauseResumeClick = () => {
-        if (this.isSessionComplete) {
+        if (this.isSessionComplete && !this.timer.isOvertime()) {
             if (this.timer.isRunning()) {
                 this.isSessionComplete = false;
                 this.timer.pause();
@@ -569,6 +595,11 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private handleResetClick = () => {
+        if (this.timer.isOvertime()) {
+            this.timer.stop();
+            this.isSessionComplete = false;
+            return;
+        }
         this.isSessionComplete = false;
         this.timer.reset(); // reset() already calls updateUI via onTick callback
     };
@@ -576,6 +607,11 @@ export default class PomodoroPlugin extends Plugin {
     private handleCycleModeClick = () => {
         const translation = this.getTranslation();
         
+        if (this.timer.isOvertime()) {
+            new Notice(translation.resetToSwitchMode);
+            return;
+        }
+
         if (this.timer.getState() !== TimerState.Idle || this.timer.isRunning()) {
             new Notice(translation.resetToSwitchMode);
             return;
@@ -610,7 +646,7 @@ export default class PomodoroPlugin extends Plugin {
 		const timerState = this.timer.getState();
 		const translation = this.getTranslation();
 
-		if (timerState === TimerState.Idle) {
+		if (timerState === TimerState.Idle && !this.timer.isOvertime()) {
 			new Notice(translation.timerNotRunning);
 			return;
 		}
@@ -650,6 +686,13 @@ export default class PomodoroPlugin extends Plugin {
 
 	private onTimerComplete() {
 		this.isSessionComplete = true;
+
+        if (this.settings.enableOvertime) {
+            this.timer.startOvertime();
+            this.updateUI(0, 0);
+            return;
+        }
+
         if (this.settings.playSound) {
             this.playNotificationSound();
         }
@@ -870,6 +913,16 @@ class PomodoroSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.autoStartPomodoros)
                 .onChange(async (value) => {
                     this.plugin.settings.autoStartPomodoros = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.enableOvertime)
+            .setDesc(settingsTrans.enableOvertimeDesc)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableOvertime)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableOvertime = value;
                     await this.plugin.saveSettings();
                 }));
 

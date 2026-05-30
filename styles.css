@@ -59,6 +59,10 @@
   stroke: #808080;
 }
 
+.minidoro-progress-circle.minidoro-overtime-mode {
+  stroke: #f59e0b;
+}
+
 .minidoro-progress-circle.minidoro-progress-idle {
   stroke-dashoffset: 0;
 }

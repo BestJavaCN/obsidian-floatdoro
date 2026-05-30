@@ -5,7 +5,8 @@ export enum TimerState {
     ShortBreak,
     LongBreak,
     Paused,
-    Idle
+    Idle,
+    Overtime
 }
 
 export type Language = 'en' | 'zh';
@@ -19,36 +20,39 @@ export interface Translation {
     sessionCompleted: string;
 		timerNotRunning: string;
 		notificationTitle: string;
-    notificationBody: string;
-    settings: {
-        workTime: string;
-        workTimeDesc: string;
-        shortBreakTime: string;
-        shortBreakTimeDesc: string;
-        longBreakTime: string;
-        longBreakTimeDesc: string;
-        longBreakInterval: string;
-        longBreakIntervalDesc: string;
-        autoStart: string;
-        autoStartBreaks: string;
-        autoStartBreaksDesc: string;
-        autoStartPomodoros: string;
-        autoStartPomodorosDesc: string;
-        notification: string;
-        playSound: string;
-        playSoundDesc: string;
-        desktopNotifications: string;
-        desktopNotificationsDesc: string;
-        language: string;
-        languageDesc: string;
-        english: string;
-        chinese: string;
-        panelSize: string;
-        panelSizeDesc: string;
-        small: string;
-        medium: string;
-        large: string;
-    };
+        notificationBody: string;
+        overtime: string;
+        settings: {
+            workTime: string;
+            workTimeDesc: string;
+            shortBreakTime: string;
+            shortBreakTimeDesc: string;
+            longBreakTime: string;
+            longBreakTimeDesc: string;
+            longBreakInterval: string;
+            longBreakIntervalDesc: string;
+            autoStart: string;
+            autoStartBreaks: string;
+            autoStartBreaksDesc: string;
+            autoStartPomodoros: string;
+            autoStartPomodorosDesc: string;
+            enableOvertime: string;
+            enableOvertimeDesc: string;
+            notification: string;
+            playSound: string;
+            playSoundDesc: string;
+            desktopNotifications: string;
+            desktopNotificationsDesc: string;
+            language: string;
+            languageDesc: string;
+            english: string;
+            chinese: string;
+            panelSize: string;
+            panelSizeDesc: string;
+            small: string;
+            medium: string;
+            large: string;
+        };
 }
 
 export class PomoTimer {
@@ -56,7 +60,10 @@ export class PomoTimer {
     private prePauseState: TimerState = TimerState.Idle;
     private remainingTime: number = 0;
     private totalTime: number = 0;
-    private targetTime: number | null = null; // New: Tracks the absolute timestamp when timer ends
+    private targetTime: number | null = null;
+    private overtimeElapsed: number = 0;
+    private overtimeStartTime: number | null = null;
+    private accumulatedOvertime: number = 0;
     private intervalId: number | null = null;
     private onTick: (remainingTime: number, totalTime: number) => void;
     private onStateChange: (state: TimerState) => void;
@@ -83,7 +90,7 @@ export class PomoTimer {
     }
 
     start(state: TimerState) {
-        if (state === TimerState.Idle || state === TimerState.Paused) return;
+        if (state === TimerState.Idle || state === TimerState.Paused || state === TimerState.Overtime) return;
         
         this.state = state;
 
@@ -145,17 +152,24 @@ export class PomoTimer {
             this.intervalId = null;
             this.prePauseState = this.state;
             this.state = TimerState.Paused;
-            this.targetTime = null; // Clear target time as we are no longer running
-            // this.remainingTime holds the correct value from the last tick
-            this.onTick(this.remainingTime, this.totalTime);
+            this.targetTime = null;
+            if (this.prePauseState === TimerState.Overtime) {
+                this.accumulatedOvertime = this.overtimeElapsed;
+                this.overtimeStartTime = null;
+                this.onTick(this.overtimeElapsed, 0);
+            } else {
+                this.onTick(this.remainingTime, this.totalTime);
+            }
         }
     }
 
     resume() {
         if (this.state === TimerState.Paused) {
-            // When we resume, start() will recalculate a NEW targetTime 
-            // based on the current Date.now() + the saved remainingTime
-            this.start(this.prePauseState);
+            if (this.prePauseState === TimerState.Overtime) {
+                this.resumeOvertime();
+            } else {
+                this.start(this.prePauseState);
+            }
         }
     }
 
@@ -168,6 +182,9 @@ export class PomoTimer {
         this.remainingTime = 0;
         this.totalTime = 0;
         this.targetTime = null;
+        this.overtimeElapsed = 0;
+        this.accumulatedOvertime = 0;
+        this.overtimeStartTime = null;
         this.onTick(this.remainingTime, this.totalTime);
     }
 
@@ -176,20 +193,73 @@ export class PomoTimer {
         this.onTick(0, 0);
     }
 
+    startOvertime() {
+        this.state = TimerState.Overtime;
+        this.overtimeElapsed = 0;
+        this.accumulatedOvertime = 0;
+        this.overtimeStartTime = Date.now();
+
+        if (this.intervalId) {
+            window.clearInterval(this.intervalId);
+        }
+
+        this.intervalId = this.plugin.registerInterval(window.setInterval(() => {
+            if (!this.overtimeStartTime) return;
+            const now = Date.now();
+            this.overtimeElapsed = this.accumulatedOvertime + Math.floor((now - this.overtimeStartTime) / 1000);
+            this.onTick(this.overtimeElapsed, 0);
+        }, 1000));
+
+        this.onTick(this.overtimeElapsed, 0);
+    }
+
+    private resumeOvertime() {
+        this.state = TimerState.Overtime;
+        this.overtimeStartTime = Date.now();
+
+        if (this.intervalId) {
+            window.clearInterval(this.intervalId);
+        }
+
+        this.intervalId = this.plugin.registerInterval(window.setInterval(() => {
+            if (!this.overtimeStartTime) return;
+            const now = Date.now();
+            this.overtimeElapsed = this.accumulatedOvertime + Math.floor((now - this.overtimeStartTime) / 1000);
+            this.onTick(this.overtimeElapsed, 0);
+        }, 1000));
+
+        this.onTick(this.overtimeElapsed, 0);
+    }
+
+    getOvertimeElapsed(): number {
+        return this.overtimeElapsed;
+    }
+
     getState(): TimerState {
         return this.state;
     }
 
     getRemainingTime(): number {
+        if (this.state === TimerState.Overtime || this.prePauseState === TimerState.Overtime) {
+            return this.overtimeElapsed;
+        }
         return this.remainingTime;
     }
 
     getTotalTime(): number {
+        if (this.state === TimerState.Overtime || this.prePauseState === TimerState.Overtime) {
+            return 0;
+        }
         return this.totalTime;
     }
 
     isRunning(): boolean {
         return this.state !== TimerState.Idle && this.state !== TimerState.Paused;
+    }
+
+    isOvertime(): boolean {
+        return this.state === TimerState.Overtime ||
+            (this.state === TimerState.Paused && this.prePauseState === TimerState.Overtime);
     }
 }
 
@@ -200,6 +270,7 @@ export interface PomodoroSettings {
     longBreakInterval: number;
     autoStartBreaks: boolean;
     autoStartPomodoros: boolean;
+    enableOvertime: boolean;
     showDesktopNotification: boolean;
     playSound: boolean;
     showInStatusBar: boolean;
@@ -216,6 +287,7 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     longBreakInterval: 4,
     autoStartBreaks: false,
     autoStartPomodoros: false,
+    enableOvertime: false,
     showDesktopNotification: true,
     playSound: true,
     showInStatusBar: false,

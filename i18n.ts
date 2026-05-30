@@ -11,6 +11,7 @@ export const translations: Record<Language, Translation> = {
         timerNotRunning: 'Timer not running',
         notificationTitle: 'Minidoro - {mode} complete',
         notificationBody: 'Your {mode_lower} session is finished.',
+        overtime: 'Overtime',
         settings: {
             workTime: 'Work time',
             workTimeDesc: 'Duration of focus sessions (seconds)',
@@ -25,6 +26,8 @@ export const translations: Record<Language, Translation> = {
             autoStartBreaksDesc: 'Automatically start break sessions',
             autoStartPomodoros: 'Auto-start focus sessions',
             autoStartPomodorosDesc: 'Automatically start focus sessions after breaks',
+            enableOvertime: 'Overtime mode',
+            enableOvertimeDesc: 'When timer ends, continue counting up instead of stopping',
             notification: 'Notification',
             playSound: 'Play sound',
             playSoundDesc: 'Play a sound when sessions end',
@@ -51,6 +54,7 @@ export const translations: Record<Language, Translation> = {
         timerNotRunning: '番茄钟未运行',
         notificationTitle: 'Minidoro - {mode}完成',
         notificationBody: '您的{mode_lower}时段已结束。',
+        overtime: '超时',
         settings: {
             workTime: '工作时间',
             workTimeDesc: '专注时段的时长（秒）',
@@ -65,6 +69,8 @@ export const translations: Record<Language, Translation> = {
             autoStartBreaksDesc: '自动开始休息时段',
             autoStartPomodoros: '自动开始专注时段',
             autoStartPomodorosDesc: '休息后自动开始专注时段',
+            enableOvertime: '超时模式',
+            enableOvertimeDesc: '计时结束后进入超时正计时，而非停止',
             notification: '通知',
             playSound: '播放声音',
             playSoundDesc: '时段结束时播放声音',
