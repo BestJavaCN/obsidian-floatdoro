@@ -26,7 +26,10 @@ export default class PomodoroPlugin extends Plugin {
 
     // Drag related variables
     private isDragging = false;
+    private hasDragged = false;
+    private dragPending = false;
     private dragOffset = { x: 0, y: 0 };
+    private dragStartPos = { x: 0, y: 0 };
     private lastPosition = { x: 0, y: 0 };
 
     async onload() {
@@ -303,7 +306,13 @@ export default class PomodoroPlugin extends Plugin {
         }
         
         // Click header to switch mode
-        headerEl.onclick = () => this.handleCycleModeClick();
+        headerEl.onclick = () => {
+            if (this.hasDragged) {
+                this.hasDragged = false;
+                return;
+            }
+            this.handleCycleModeClick();
+        };
         
         // Create button bar
         const buttonBar = this.controlPanelEl.createEl('div', { cls: 'minidoro-button-bar' });
@@ -422,19 +431,17 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     private onDragStart = (event: MouseEvent) => {
-        // Allow dragging from control panel only
         const target = event.target as HTMLElement;
-        // Prevent dragging when clicking buttons inside the panel
         if (target.closest('.minidoro-btn')) {
             return;
         }
         
-        // Get the panel wrapper (the fixed positioned container)
         const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
         if (!panelWrapper) return;
         
-        this.isDragging = true;
-        this.controlPanelEl?.addClass('dragging');
+        this.hasDragged = false;
+        this.dragPending = true;
+        this.dragStartPos = { x: event.clientX, y: event.clientY };
         
         const rect = panelWrapper.getBoundingClientRect();
         this.dragOffset = {
@@ -444,16 +451,25 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private onDragMove = (event: MouseEvent) => {
-        if (!this.isDragging) return;
+        if (!this.isDragging) {
+            if (!this.dragPending) return;
+            const dx = Math.abs(event.clientX - this.dragStartPos.x);
+            const dy = Math.abs(event.clientY - this.dragStartPos.y);
+            const DRAG_THRESHOLD = 5;
+            if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
+                return;
+            }
+            this.isDragging = true;
+            this.hasDragged = true;
+            this.controlPanelEl?.addClass('dragging');
+        }
         
-        // Get the panel wrapper (the fixed positioned container)
         const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
         if (!panelWrapper) return;
 
         const x = event.clientX - this.dragOffset.x;
         const y = event.clientY - this.dragOffset.y;
 
-        // Ensure panel stays within viewport
         const maxX = window.innerWidth - (panelWrapper.offsetWidth || 150);
         const maxY = window.innerHeight - (panelWrapper.offsetHeight || 100);
         
@@ -462,7 +478,6 @@ export default class PomodoroPlugin extends Plugin {
             y: Math.max(0, Math.min(y, maxY))
         };
 
-        // Clear right and use left for positioning
         panelWrapper.style.right = 'auto';
         panelWrapper.style.left = `${this.lastPosition.x}px`;
         panelWrapper.style.top = `${this.lastPosition.y}px`;
@@ -470,15 +485,17 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private onDragEnd = () => {
+        this.dragPending = false;
         if (!this.isDragging) return;
         
         this.isDragging = false;
         this.controlPanelEl?.removeClass('dragging');
         
-        // Save position to settings
-        this.settings.panelX = this.lastPosition.x;
-        this.settings.panelY = this.lastPosition.y;
-        void this.saveData(this.settings);
+        if (this.hasDragged) {
+            this.settings.panelX = this.lastPosition.x;
+            this.settings.panelY = this.lastPosition.y;
+            void this.saveData(this.settings);
+        }
     };
 
     private getModeClass(): string {
