@@ -220,14 +220,12 @@
 @keyframes overtimePulse {
   0% {
     opacity: 0;
-    box-shadow: inset 0 0 4px var(--pulse-color, transparent);
   }
   50% {
-    opacity: 0.7;
+    opacity: 0.85;
   }
   100% {
     opacity: 0;
-    box-shadow: inset 0 0 36px var(--pulse-color, transparent);
   }
 }
 
@@ -238,7 +236,12 @@
   border-radius: inherit;
   pointer-events: none;
   z-index: 0;
-  animation: overtimePulse 1.2s ease-out infinite;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 25%,
+    var(--pulse-color, transparent) 100%
+  );
+  animation: overtimePulse 1.2s ease-in-out infinite;
 }
 
 .minidoro-panel-header.minidoro-overtime-pulse.minidoro-work-mode::after {
