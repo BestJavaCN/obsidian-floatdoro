@@ -17,6 +17,7 @@ export default class PomodoroPlugin extends Plugin {
     private pieCircleEl: SVGCircleElement | null = null;
     private panelTimeEl: HTMLElement | null = null;
     private panelModeEl: HTMLDivElement | null = null;
+    private panelHeaderEl: HTMLDivElement | null = null;
     private playButtonEl: HTMLButtonElement | null = null;
     private isVisible = true;
     private isPanelExpanded = false;
@@ -208,14 +209,13 @@ export default class PomodoroPlugin extends Plugin {
         const timerState = this.timer.getState();
         const isOvertime = this.timer.isOvertime();
         
-        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-break-mode', 'minidoro-overtime-mode');
+        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-short-break-mode', 'minidoro-long-break-mode', 'minidoro-overtime-mode');
         this.pieCircleEl.removeClass('minidoro-progress-complete', 'minidoro-progress-idle');
 
         if (isOvertime) {
             this.pieCircleEl.addClass('minidoro-overtime-mode');
         } else {
-            const isWorkMode = this.currentMode === TimerState.Work;
-            const modeClass = isWorkMode ? 'minidoro-work-mode' : 'minidoro-break-mode';
+            const modeClass = this.getModeClass();
             this.pieCircleEl.addClass(modeClass);
         }
 
@@ -267,6 +267,7 @@ export default class PomodoroPlugin extends Plugin {
                 'tabindex': '0'
             } 
         });
+        this.panelHeaderEl = headerEl;
         
         // Time display
         this.panelTimeEl = headerEl.createEl('div', { 
@@ -281,8 +282,11 @@ export default class PomodoroPlugin extends Plugin {
         // Set initial values for time and mode
         this.panelTimeEl.setText(this.getIdleTimeText());
         this.panelModeEl.setText(this.getModeText());
-        this.panelModeEl.addClass(this.currentMode === TimerState.Work ? 'minidoro-work-mode' : 'minidoro-break-mode');
+        this.panelModeEl.addClass(this.getModeClass());
         this.panelModeEl.addClass('mode-enabled');
+        if (this.panelHeaderEl) {
+            this.panelHeaderEl.addClass(this.getModeClass());
+        }
         
         // Click header to switch mode
         headerEl.onclick = () => this.handleCycleModeClick();
@@ -360,6 +364,7 @@ export default class PomodoroPlugin extends Plugin {
         this.controlPanelEl = null;
         this.panelTimeEl = null;
         this.panelModeEl = null;
+        this.panelHeaderEl = null;
         this.playButtonEl = null;
         this.isVisible = false;
         this.isPanelExpanded = false;
@@ -461,6 +466,15 @@ export default class PomodoroPlugin extends Plugin {
         void this.saveData(this.settings);
     };
 
+    private getModeClass(): string {
+        switch (this.currentMode) {
+            case TimerState.Work: return 'minidoro-work-mode';
+            case TimerState.ShortBreak: return 'minidoro-short-break-mode';
+            case TimerState.LongBreak: return 'minidoro-long-break-mode';
+            default: return 'minidoro-work-mode';
+        }
+    }
+
     private updateUI(remainingTime: number, totalTime: number) {
         if (!this.pieCircleEl || !this.panelTimeEl || !this.panelModeEl) {
             return;
@@ -469,18 +483,23 @@ export default class PomodoroPlugin extends Plugin {
         const timerState = this.timer.getState();
         const isOvertime = this.timer.isOvertime();
         
-        this.pieCircleEl.removeClass('minidoro-work-mode', 'minidoro-break-mode', 'minidoro-overtime-mode');
-        this.panelModeEl.removeClass('minidoro-work-mode', 'minidoro-break-mode', 'minidoro-overtime-mode', 'mode-enabled', 'mode-disabled');
+        const allModeClasses = ['minidoro-work-mode', 'minidoro-short-break-mode', 'minidoro-long-break-mode', 'minidoro-overtime-mode'];
+        this.pieCircleEl.removeClass(...allModeClasses);
+        this.panelModeEl.removeClass(...allModeClasses, 'mode-enabled', 'mode-disabled');
+        if (this.panelHeaderEl) {
+            this.panelHeaderEl.removeClass(...allModeClasses);
+        }
         this.pieCircleEl.removeClass('minidoro-progress-complete', 'minidoro-progress-idle');
 
         if (isOvertime) {
             this.pieCircleEl.addClass('minidoro-overtime-mode');
             this.panelModeEl.addClass('minidoro-overtime-mode');
+            if (this.panelHeaderEl) this.panelHeaderEl.addClass('minidoro-overtime-mode');
         } else {
-            const isWorkMode = this.currentMode === TimerState.Work;
-            const modeClass = isWorkMode ? 'minidoro-work-mode' : 'minidoro-break-mode';
+            const modeClass = this.getModeClass();
             this.pieCircleEl.addClass(modeClass);
             this.panelModeEl.addClass(modeClass);
+            if (this.panelHeaderEl) this.panelHeaderEl.addClass(modeClass);
         }
 
         const radius = this.pieCircleEl.r.baseVal.value;

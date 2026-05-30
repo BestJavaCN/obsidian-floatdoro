@@ -1,3 +1,17 @@
+:root {
+  --minidoro-work-color: #A382F8;
+  --minidoro-short-break-color: #4CAF50;
+  --minidoro-long-break-color: #42A5F5;
+  --minidoro-overtime-color: #F59E0B;
+}
+
+.theme-dark {
+  --minidoro-work-color: #B39DDB;
+  --minidoro-short-break-color: #81C784;
+  --minidoro-long-break-color: #64B5F6;
+  --minidoro-overtime-color: #FFB74D;
+}
+
 /* Container for our timer icon */
 .minidoro-container {
   position: relative;
@@ -52,15 +66,19 @@
 }
 
 .minidoro-progress-circle.minidoro-work-mode {
-  stroke: var(--interactive-accent);
+  stroke: var(--minidoro-work-color);
 }
 
-.minidoro-progress-circle.minidoro-break-mode {
-  stroke: #808080;
+.minidoro-progress-circle.minidoro-short-break-mode {
+  stroke: var(--minidoro-short-break-color);
+}
+
+.minidoro-progress-circle.minidoro-long-break-mode {
+  stroke: var(--minidoro-long-break-color);
 }
 
 .minidoro-progress-circle.minidoro-overtime-mode {
-  stroke: #f59e0b;
+  stroke: var(--minidoro-overtime-color);
 }
 
 .minidoro-progress-circle.minidoro-progress-idle {
@@ -120,10 +138,10 @@
 .minidoro-control-panel {
   width: 100%;
   padding: 8px;
-  background: #ffffff;
+  background: var(--background-secondary);
   border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -145,18 +163,34 @@
   padding: 10px;
 }
 
-/* Purple header section with rounded corners */
+/* Header section with rounded corners - color set by mode class */
 .minidoro-panel-header {
-  background: #A382F8;
+  background: var(--minidoro-work-color);
   padding: 10px 8px;
   margin: 0;
   border-radius: 10px;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: background 0.3s ease, opacity 0.2s ease;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.minidoro-panel-header.minidoro-work-mode {
+  background: var(--minidoro-work-color);
+}
+
+.minidoro-panel-header.minidoro-short-break-mode {
+  background: var(--minidoro-short-break-color);
+}
+
+.minidoro-panel-header.minidoro-long-break-mode {
+  background: var(--minidoro-long-break-color);
+}
+
+.minidoro-panel-header.minidoro-overtime-mode {
+  background: var(--minidoro-overtime-color);
 }
 
 .minidoro-panel-header:hover {
@@ -228,8 +262,8 @@
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: #F8F7F7 !important;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -242,7 +276,7 @@
 
 .minidoro-btn:hover {
   transform: translateY(-1px);
-  background: #F0F0F0 !important;
+  background: var(--background-modifier-hover) !important;
 }
 
 .minidoro-btn:active {
@@ -296,7 +330,7 @@
 }
 
 .minidoro-btn:focus-visible {
-  outline: 2px solid #d8a6e0;
+  outline: 2px solid var(--minidoro-work-color);
   outline-offset: 2px;
 }
 
