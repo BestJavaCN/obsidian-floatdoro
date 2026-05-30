@@ -204,9 +204,9 @@
   background: repeating-conic-gradient(
     from 0deg,
     transparent 0deg,
-    rgba(255, 255, 255, 0.15) 5deg,
+    rgba(255, 255, 255, 0.3) 5deg,
     transparent 10deg,
-    rgba(200, 180, 255, 0.12) 15deg,
+    rgba(200, 180, 255, 0.25) 15deg,
     transparent 20deg
   );
   animation: panelRaySpin 4s linear infinite;
