@@ -22,6 +22,9 @@ export interface Translation {
 		notificationTitle: string;
         notificationBody: string;
         overtime: string;
+        overtimeReminderTitle: string;
+        overtimeReminderBody: string;
+        overtimeLimitReached: string;
         settings: {
             workTime: string;
             workTimeDesc: string;
@@ -38,6 +41,10 @@ export interface Translation {
             autoStartPomodorosDesc: string;
             enableOvertime: string;
             enableOvertimeDesc: string;
+            overtimeReminderInterval: string;
+            overtimeReminderIntervalDesc: string;
+            overtimeLimit: string;
+            overtimeLimitDesc: string;
             notification: string;
             playSound: string;
             playSoundDesc: string;
@@ -68,21 +75,28 @@ export class PomoTimer {
     private onTick: (remainingTime: number, totalTime: number) => void;
     private onStateChange: (state: TimerState) => void;
     private onTimerComplete: () => void;
+    private onOvertimeReminder: (elapsedMinutes: number) => void;
+    private onOvertimeLimitReached: () => void;
     private settings: PomodoroSettings;
     private plugin: Plugin;
+    private lastReminderTime: number = 0;
 
     constructor(
         plugin: Plugin,
         settings: PomodoroSettings, 
         onTick: (remainingTime: number, totalTime: number) => void, 
         onStateChange: (state: TimerState) => void,
-        onTimerComplete: () => void
+        onTimerComplete: () => void,
+        onOvertimeReminder: (elapsedMinutes: number) => void,
+        onOvertimeLimitReached: () => void
     ) {
         this.plugin = plugin;
         this.settings = settings;
         this.onTick = onTick;
         this.onStateChange = onStateChange;
         this.onTimerComplete = onTimerComplete;
+        this.onOvertimeReminder = onOvertimeReminder;
+        this.onOvertimeLimitReached = onOvertimeLimitReached;
     }
 
     public updateSettings(settings: PomodoroSettings) {
@@ -198,6 +212,7 @@ export class PomoTimer {
         this.overtimeElapsed = 0;
         this.accumulatedOvertime = 0;
         this.overtimeStartTime = Date.now();
+        this.lastReminderTime = 0;
 
         if (this.intervalId) {
             window.clearInterval(this.intervalId);
@@ -207,6 +222,24 @@ export class PomoTimer {
             if (!this.overtimeStartTime) return;
             const now = Date.now();
             this.overtimeElapsed = this.accumulatedOvertime + Math.floor((now - this.overtimeStartTime) / 1000);
+
+            const limitSec = this.settings.overtimeLimit * 60;
+            if (limitSec > 0 && this.overtimeElapsed >= limitSec) {
+                this.overtimeElapsed = limitSec;
+                this.stop();
+                this.onOvertimeLimitReached();
+                return;
+            }
+
+            const reminderIntervalSec = this.settings.overtimeReminderInterval * 60;
+            if (reminderIntervalSec > 0) {
+                const reminderCount = Math.floor(this.overtimeElapsed / reminderIntervalSec);
+                if (reminderCount > this.lastReminderTime) {
+                    this.lastReminderTime = reminderCount;
+                    this.onOvertimeReminder(reminderCount * this.settings.overtimeReminderInterval);
+                }
+            }
+
             this.onTick(this.overtimeElapsed, 0);
         }, 1000));
 
@@ -225,6 +258,24 @@ export class PomoTimer {
             if (!this.overtimeStartTime) return;
             const now = Date.now();
             this.overtimeElapsed = this.accumulatedOvertime + Math.floor((now - this.overtimeStartTime) / 1000);
+
+            const limitSec = this.settings.overtimeLimit * 60;
+            if (limitSec > 0 && this.overtimeElapsed >= limitSec) {
+                this.overtimeElapsed = limitSec;
+                this.stop();
+                this.onOvertimeLimitReached();
+                return;
+            }
+
+            const reminderIntervalSec = this.settings.overtimeReminderInterval * 60;
+            if (reminderIntervalSec > 0) {
+                const reminderCount = Math.floor(this.overtimeElapsed / reminderIntervalSec);
+                if (reminderCount > this.lastReminderTime) {
+                    this.lastReminderTime = reminderCount;
+                    this.onOvertimeReminder(reminderCount * this.settings.overtimeReminderInterval);
+                }
+            }
+
             this.onTick(this.overtimeElapsed, 0);
         }, 1000));
 
@@ -271,6 +322,8 @@ export interface PomodoroSettings {
     autoStartBreaks: boolean;
     autoStartPomodoros: boolean;
     enableOvertime: boolean;
+    overtimeReminderInterval: number;
+    overtimeLimit: number;
     showDesktopNotification: boolean;
     playSound: boolean;
     showInStatusBar: boolean;
@@ -288,6 +341,8 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     autoStartBreaks: false,
     autoStartPomodoros: false,
     enableOvertime: false,
+    overtimeReminderInterval: 5,
+    overtimeLimit: 30,
     showDesktopNotification: true,
     playSound: true,
     showInStatusBar: false,

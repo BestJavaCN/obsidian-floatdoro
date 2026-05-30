@@ -45,7 +45,9 @@ export default class PomodoroPlugin extends Plugin {
             this.settings,
             (remaining, total) => this.updateUI(remaining, total),
             (state) => this.onTimerCompletion(state),
-            () => this.onTimerComplete()
+            () => this.onTimerComplete(),
+            (elapsedMinutes) => this.handleOvertimeReminder(elapsedMinutes),
+            () => this.handleOvertimeLimitReached()
         );
 
         this.addSettingTab(new PomodoroSettingTab(this.app, this));
@@ -818,6 +820,31 @@ export default class PomodoroPlugin extends Plugin {
         }
     }
 
+    private handleOvertimeReminder(elapsedMinutes: number) {
+        const translation = this.getTranslation();
+        const preOvertimeText = this.currentMode === TimerState.Work 
+            ? translation.focus 
+            : this.currentMode === TimerState.ShortBreak 
+                ? translation.shortBreak 
+                : translation.longBreak;
+        const title = translation.overtimeReminderTitle;
+        const body = translation.overtimeReminderBody
+            .replace('{mode}', preOvertimeText)
+            .replace('{mode_lower}', preOvertimeText.toLowerCase())
+            .replace('{minutes}', elapsedMinutes.toString());
+        new Notice(body, 4000);
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, { body, tag: 'pomodoro-overtime', silent: false });
+        }
+    }
+
+    private handleOvertimeLimitReached() {
+        const translation = this.getTranslation();
+        this.isSessionComplete = false;
+        new Notice(translation.overtimeLimitReached, 4000);
+        this.showDesktopNotification();
+    }
+
     private advanceToNextMode() {
         if (this.currentMode === TimerState.Work) {
             this.completedPomodoros++;
@@ -975,6 +1002,30 @@ class PomodoroSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.enableOvertime)
                 .onChange(async (value) => {
                     this.plugin.settings.enableOvertime = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.overtimeReminderInterval)
+            .setDesc(settingsTrans.overtimeReminderIntervalDesc)
+            .addSlider(slider => slider
+                .setLimits(1, 30, 1)
+                .setValue(this.plugin.settings.overtimeReminderInterval)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                    this.plugin.settings.overtimeReminderInterval = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.overtimeLimit)
+            .setDesc(settingsTrans.overtimeLimitDesc)
+            .addSlider(slider => slider
+                .setLimits(5, 30, 1)
+                .setValue(this.plugin.settings.overtimeLimit)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                    this.plugin.settings.overtimeLimit = value;
                     await this.plugin.saveSettings();
                 }));
 
