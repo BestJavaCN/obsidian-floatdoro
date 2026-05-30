@@ -1,10 +1,10 @@
 {
-	"id": "minidoro",
-	"name": "Minidoro",
-	"version": "1.0.11",
+	"id": "floatdoro",
+	"name": "Floatdoro",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "A minimal Pomodoro timer to help you focus.",
-	"author": "Shakti Sampad Swain",
-	"fundingUrl": "https://buymeacoffee.com/shakti_02",
+	"description": "A floating Pomodoro timer with pie-chart progress in the title bar.",
+	"author": "BestJavaCN",
+	"repo": "BestJavaCN/floatdoro",
 	"isDesktopOnly": false
 }

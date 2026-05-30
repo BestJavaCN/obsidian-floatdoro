@@ -1,11 +1,11 @@
 {
-	"name": "minidoro",
-	"version": "1.0.11",
-	"description": "A minimal Pomodoro timer to help you focus.",
+	"name": "floatdoro",
+	"version": "1.0.0",
+	"description": "A floating Pomodoro timer with pie-chart progress in the title bar.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && xcopy manifest.json E:\\ObsidianVaultBak\\.obsidian\\plugins\\minidoro /Y && xcopy styles.css E:\\ObsidianVaultBak\\.obsidian\\plugins\\minidoro /Y",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && xcopy manifest.json E:\\ObsidianVaultBak\\.obsidian\\plugins\\floatdoro /Y && xcopy styles.css E:\\ObsidianVaultBak\\.obsidian\\plugins\\floatdoro /Y",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [
@@ -15,7 +15,7 @@
 		"productivity",
 		"focus"
 	],
-	"author": "Shakti Sampad Swain",
+	"author": "BestJavaCN",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
