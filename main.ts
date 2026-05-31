@@ -235,6 +235,11 @@ export default class PomodoroPlugin extends Plugin {
             } else {
                 this.panelHeaderEl.removeClass('minidoro-overtime-pulse');
             }
+            if (this.timer.isOvertimeLimitReached()) {
+                this.panelHeaderEl.addClass('minidoro-overtime-limit');
+            } else {
+                this.panelHeaderEl.removeClass('minidoro-overtime-limit');
+            }
         }
 
         const radius = this.pieCircleEl.r.baseVal.value;
@@ -550,6 +555,11 @@ export default class PomodoroPlugin extends Plugin {
             } else {
                 this.panelHeaderEl.removeClass('minidoro-overtime-pulse');
             }
+            if (this.timer.isOvertimeLimitReached()) {
+                this.panelHeaderEl.addClass('minidoro-overtime-limit');
+            } else {
+                this.panelHeaderEl.removeClass('minidoro-overtime-limit');
+            }
         }
 
         const radius = this.pieCircleEl.r.baseVal.value;
@@ -857,9 +867,14 @@ export default class PomodoroPlugin extends Plugin {
 
     private handleOvertimeLimitReached() {
         const translation = this.getTranslation();
-        this.isSessionComplete = false;
         new Notice(translation.overtimeLimitReached, 4000);
-        this.showDesktopNotification();
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(translation.overtimeReminderTitle, {
+                body: translation.overtimeLimitReached,
+                tag: 'pomodoro-overtime-limit',
+                silent: false
+            });
+        }
     }
 
     private advanceToNextMode() {

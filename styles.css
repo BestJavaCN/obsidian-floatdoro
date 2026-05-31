@@ -192,6 +192,14 @@
   background: var(--minidoro-overtime-color);
 }
 
+.minidoro-panel-header.minidoro-overtime-limit {
+  background: #e53935 !important;
+}
+
+.theme-dark .minidoro-panel-header.minidoro-overtime-limit {
+  background: #ef5350 !important;
+}
+
 .minidoro-panel-header.minidoro-spinning::before {
   content: '';
   position: absolute;

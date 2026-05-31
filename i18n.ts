@@ -14,7 +14,7 @@ export const translations: Record<Language, Translation> = {
         overtime: 'Overtime',
         overtimeReminderTitle: 'Pomodoro - Overtime Reminder',
         overtimeReminderBody: 'Your {mode_lower} session has been in overtime for {minutes} minutes. Please finish up soon.',
-        overtimeLimitReached: 'Overtime limit reached, timer stopped',
+        overtimeLimitReached: 'Overtime limit reached, please finish up soon',
         settings: {
             workTime: 'Work time',
             workTimeDesc: 'Duration of focus sessions (minutes)',
@@ -64,7 +64,7 @@ export const translations: Record<Language, Translation> = {
         overtime: '超时',
         overtimeReminderTitle: 'Pomodoro - 超时提醒',
         overtimeReminderBody: '您的{mode}时段已超时{minutes}分钟，请尽快结束',
-        overtimeLimitReached: '已达到超时上限，计时器已停止',
+        overtimeLimitReached: '已到达超时上限，请尽快结束当前阶段',
         settings: {
             workTime: '工作时间',
             workTimeDesc: '专注时段的时长（分钟）',

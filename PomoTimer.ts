@@ -71,6 +71,7 @@ export class PomoTimer {
     private overtimeElapsed: number = 0;
     private overtimeStartTime: number | null = null;
     private accumulatedOvertime: number = 0;
+    private overtimeLimitReached: boolean = false;
     private intervalId: number | null = null;
     private onTick: (remainingTime: number, totalTime: number) => void;
     private onStateChange: (state: TimerState) => void;
@@ -199,6 +200,7 @@ export class PomoTimer {
         this.overtimeElapsed = 0;
         this.accumulatedOvertime = 0;
         this.overtimeStartTime = null;
+        this.overtimeLimitReached = false;
         this.onTick(this.remainingTime, this.totalTime);
     }
 
@@ -225,18 +227,20 @@ export class PomoTimer {
 
             const limitSec = this.settings.overtimeLimit * 60;
             if (limitSec > 0 && this.overtimeElapsed >= limitSec) {
-                this.overtimeElapsed = limitSec;
-                this.stop();
-                this.onOvertimeLimitReached();
-                return;
+                if (!this.overtimeLimitReached) {
+                    this.overtimeLimitReached = true;
+                    this.onOvertimeLimitReached();
+                }
             }
 
-            const reminderIntervalSec = this.settings.overtimeReminderInterval * 60;
-            if (reminderIntervalSec > 0) {
-                const reminderCount = Math.floor(this.overtimeElapsed / reminderIntervalSec);
-                if (reminderCount > this.lastReminderTime) {
-                    this.lastReminderTime = reminderCount;
-                    this.onOvertimeReminder(reminderCount * this.settings.overtimeReminderInterval);
+            if (!this.overtimeLimitReached) {
+                const reminderIntervalSec = this.settings.overtimeReminderInterval * 60;
+                if (reminderIntervalSec > 0) {
+                    const reminderCount = Math.floor(this.overtimeElapsed / reminderIntervalSec);
+                    if (reminderCount > this.lastReminderTime) {
+                        this.lastReminderTime = reminderCount;
+                        this.onOvertimeReminder(reminderCount * this.settings.overtimeReminderInterval);
+                    }
                 }
             }
 
@@ -261,18 +265,20 @@ export class PomoTimer {
 
             const limitSec = this.settings.overtimeLimit * 60;
             if (limitSec > 0 && this.overtimeElapsed >= limitSec) {
-                this.overtimeElapsed = limitSec;
-                this.stop();
-                this.onOvertimeLimitReached();
-                return;
+                if (!this.overtimeLimitReached) {
+                    this.overtimeLimitReached = true;
+                    this.onOvertimeLimitReached();
+                }
             }
 
-            const reminderIntervalSec = this.settings.overtimeReminderInterval * 60;
-            if (reminderIntervalSec > 0) {
-                const reminderCount = Math.floor(this.overtimeElapsed / reminderIntervalSec);
-                if (reminderCount > this.lastReminderTime) {
-                    this.lastReminderTime = reminderCount;
-                    this.onOvertimeReminder(reminderCount * this.settings.overtimeReminderInterval);
+            if (!this.overtimeLimitReached) {
+                const reminderIntervalSec = this.settings.overtimeReminderInterval * 60;
+                if (reminderIntervalSec > 0) {
+                    const reminderCount = Math.floor(this.overtimeElapsed / reminderIntervalSec);
+                    if (reminderCount > this.lastReminderTime) {
+                        this.lastReminderTime = reminderCount;
+                        this.onOvertimeReminder(reminderCount * this.settings.overtimeReminderInterval);
+                    }
                 }
             }
 
@@ -311,6 +317,10 @@ export class PomoTimer {
     isOvertime(): boolean {
         return this.state === TimerState.Overtime ||
             (this.state === TimerState.Paused && this.prePauseState === TimerState.Overtime);
+    }
+
+    isOvertimeLimitReached(): boolean {
+        return this.overtimeLimitReached;
     }
 }
 
