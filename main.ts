@@ -513,23 +513,57 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     private updateUI(remainingTime: number, totalTime: number) {
-        if (!this.pieCircleEl || !this.panelTimeEl || !this.panelModeEl) {
+        if (!this.panelTimeEl || !this.panelModeEl) {
             return;
         }
 
         const timerState = this.timer.getState();
         const isOvertime = this.timer.isOvertime();
         
+        if (this.pieCircleEl) {
+            const allModeClasses = ['minidoro-work-mode', 'minidoro-short-break-mode', 'minidoro-long-break-mode', 'minidoro-overtime-mode'];
+            this.pieCircleEl.removeClass(...allModeClasses);
+            this.pieCircleEl.removeClass('minidoro-progress-complete', 'minidoro-progress-idle');
+
+            if (isOvertime) {
+                this.pieCircleEl.addClass('minidoro-overtime-mode');
+            } else {
+                this.pieCircleEl.addClass(this.getModeClass());
+            }
+
+            if (this.isSessionComplete) {
+                this.containerEl?.addClass('session-complete');
+            } else {
+                this.containerEl?.removeClass('session-complete');
+            }
+
+            const radius = this.pieCircleEl.r.baseVal.value;
+            const circumference = 2 * Math.PI * radius;
+            
+            let progress: number;
+            if (isOvertime) {
+                progress = 1;
+            } else if (timerState === TimerState.Idle) {
+                progress = 1; 
+                this.pieCircleEl.addClass('minidoro-progress-idle');
+            } else {
+                progress = totalTime > 0 ? remainingTime / totalTime : 0;
+                if (progress <= 0) {
+                    this.pieCircleEl.addClass('minidoro-progress-complete');
+                }
+            }
+
+            this.pieCircleEl.style.setProperty('--progress', progress.toString());
+            this.pieCircleEl.style.setProperty('--circumference', circumference.toString());
+        }
+
         const allModeClasses = ['minidoro-work-mode', 'minidoro-short-break-mode', 'minidoro-long-break-mode', 'minidoro-overtime-mode'];
-        this.pieCircleEl.removeClass(...allModeClasses);
         this.panelModeEl.removeClass(...allModeClasses, 'mode-enabled', 'mode-disabled');
         if (this.panelHeaderEl) {
             this.panelHeaderEl.removeClass(...allModeClasses);
         }
-        this.pieCircleEl.removeClass('minidoro-progress-complete', 'minidoro-progress-idle');
 
         if (isOvertime) {
-            this.pieCircleEl.addClass('minidoro-overtime-mode');
             this.panelModeEl.addClass('minidoro-overtime-mode');
             if (this.panelHeaderEl) {
                 this.panelHeaderEl.addClass('minidoro-overtime-mode');
@@ -537,7 +571,6 @@ export default class PomodoroPlugin extends Plugin {
             }
         } else {
             const modeClass = this.getModeClass();
-            this.pieCircleEl.addClass(modeClass);
             this.panelModeEl.addClass(modeClass);
             if (this.panelHeaderEl) {
                 this.panelHeaderEl.addClass(modeClass);
@@ -560,31 +593,6 @@ export default class PomodoroPlugin extends Plugin {
             } else {
                 this.panelHeaderEl.removeClass('minidoro-overtime-limit');
             }
-        }
-
-        const radius = this.pieCircleEl.r.baseVal.value;
-        const circumference = 2 * Math.PI * radius;
-        
-        let progress: number;
-        if (isOvertime) {
-            progress = 1;
-        } else if (timerState === TimerState.Idle) {
-            progress = 1; 
-            this.pieCircleEl.addClass('minidoro-progress-idle');
-        } else {
-            progress = totalTime > 0 ? remainingTime / totalTime : 0;
-            if (progress <= 0) {
-                this.pieCircleEl.addClass('minidoro-progress-complete');
-            }
-        }
-
-        this.pieCircleEl.style.setProperty('--progress', progress.toString());
-        this.pieCircleEl.style.setProperty('--circumference', circumference.toString());
-
-        if (this.isSessionComplete) {
-            this.containerEl?.addClass('session-complete');
-        } else {
-            this.containerEl?.removeClass('session-complete');
         }
 
         const minutes = Math.floor(remainingTime / 60).toString().padStart(2, '0');
