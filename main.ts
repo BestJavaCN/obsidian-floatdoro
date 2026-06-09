@@ -353,6 +353,9 @@ export default class PomodoroPlugin extends Plugin {
         this.controlPanelEl.addEventListener('touchstart', this.onTouchStart);
         document.addEventListener('touchmove', this.onTouchMove, { passive: false });
         document.addEventListener('touchend', this.onTouchEnd);
+
+        // Right-click context menu on the control panel
+        this.controlPanelEl.addEventListener('contextmenu', this.onContextMenu);
     }
 
     private toggleVisibility() {
@@ -441,6 +444,9 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     private onDragStart = (event: MouseEvent) => {
+        // Only left-click (button === 0) should initiate dragging
+        if (event.button !== 0) return;
+        
         const target = event.target as HTMLElement;
         if (target.closest('.minidoro-btn')) {
             return;
@@ -458,6 +464,11 @@ export default class PomodoroPlugin extends Plugin {
             x: event.clientX - rect.left,
             y: event.clientY - rect.top
         };
+    };
+
+    private onContextMenu = (event: MouseEvent) => {
+        event.preventDefault();
+        (this.app as any).commands.executeCommandById('vault-locker:lock-vault');
     };
 
     private onDragMove = (event: MouseEvent) => {
