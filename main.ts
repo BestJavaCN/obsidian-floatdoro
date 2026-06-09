@@ -28,6 +28,7 @@ export default class PomodoroPlugin extends Plugin {
     // Flip related
     private flipContainerEl: HTMLDivElement | null = null;
     private backPanelEl: HTMLDivElement | null = null;
+    private themeToggleBtnEl: HTMLButtonElement | null = null;
 
     // Drag related variables
     private isDragging = false;
@@ -362,7 +363,7 @@ export default class PomodoroPlugin extends Plugin {
 		setIcon(completeBtn, 'check');
 		completeBtn.onclick = () => this.handleCompleteClick();
 
-        // --- Build back face (lock button) ---
+        // --- Build back face (lock button and theme toggle) ---
         
         const lockButton = this.backPanelEl.createEl('button', {
             cls: 'minidoro-lock-button',
@@ -372,6 +373,16 @@ export default class PomodoroPlugin extends Plugin {
         lockButton.onclick = (event) => {
             event.stopPropagation();
             this.lockVault();
+        };
+
+        this.themeToggleBtnEl = this.backPanelEl.createEl('button', {
+            cls: 'minidoro-lock-button',
+            attr: { 'title': 'Toggle theme' }
+        });
+        this.updateThemeToggleIcon();
+        this.themeToggleBtnEl.onclick = (event) => {
+            event.stopPropagation();
+            this.toggleTheme();
         };
 
         // Add drag event listeners to wrapper (works on both front and back faces)
@@ -388,6 +399,27 @@ export default class PomodoroPlugin extends Plugin {
 
     private lockVault() {
         (this.app as any).commands.executeCommandById('vault-locker:lock-vault');
+    }
+
+    private toggleTheme() {
+        const isDark = document.body.classList.contains('theme-dark');
+        const targetTheme = isDark ? 'moonstone' : 'obsidian';
+        (this.app as any).setTheme?.(targetTheme);
+        (this.app as any).changeTheme?.(targetTheme);
+        // Fallback: toggle the body class directly if API unavailable
+        if (isDark) {
+            document.body.classList.replace('theme-dark', 'theme-light');
+        } else {
+            document.body.classList.replace('theme-light', 'theme-dark');
+        }
+        this.updateThemeToggleIcon();
+    }
+
+    private updateThemeToggleIcon() {
+        if (!this.themeToggleBtnEl) return;
+        const isDark = document.body.classList.contains('theme-dark');
+        setIcon(this.themeToggleBtnEl, isDark ? 'sun' : 'moon');
+        this.themeToggleBtnEl.setAttribute('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
     }
 
     private toggleVisibility() {
@@ -437,6 +469,7 @@ export default class PomodoroPlugin extends Plugin {
         this.playButtonEl = null;
         this.flipContainerEl = null;
         this.backPanelEl = null;
+        this.themeToggleBtnEl = null;
         this.isVisible = false;
         this.isPanelExpanded = false;
         this.isFlipped = false;
