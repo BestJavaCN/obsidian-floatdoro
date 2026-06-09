@@ -346,10 +346,13 @@ export default class PomodoroPlugin extends Plugin {
 		setIcon(completeBtn, 'check');
 		completeBtn.onclick = () => this.handleCompleteClick();
 
-        // Add drag event listeners to control panel only
+        // Add drag event listeners to control panel only (mouse + touch)
         this.controlPanelEl.addEventListener('mousedown', this.onDragStart);
         document.addEventListener('mousemove', this.onDragMove);
         document.addEventListener('mouseup', this.onDragEnd);
+        this.controlPanelEl.addEventListener('touchstart', this.onTouchStart);
+        document.addEventListener('touchmove', this.onTouchMove, { passive: false });
+        document.addEventListener('touchend', this.onTouchEnd);
     }
 
     private toggleVisibility() {
@@ -385,6 +388,8 @@ export default class PomodoroPlugin extends Plugin {
 
         document.removeEventListener('mousemove', this.onDragMove);
         document.removeEventListener('mouseup', this.onDragEnd);
+        document.removeEventListener('touchmove', this.onTouchMove);
+        document.removeEventListener('touchend', this.onTouchEnd);
 
         this.containerEl = null;
         this.pieButtonEl = null;
@@ -490,6 +495,79 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private onDragEnd = () => {
+        this.dragPending = false;
+        if (!this.isDragging) return;
+        
+        this.isDragging = false;
+        this.controlPanelEl?.removeClass('dragging');
+        
+        if (this.hasDragged) {
+            this.settings.panelX = this.lastPosition.x;
+            this.settings.panelY = this.lastPosition.y;
+            void this.saveData(this.settings);
+        }
+    };
+
+    private onTouchStart = (event: TouchEvent) => {
+        const target = event.target as HTMLElement;
+        if (target.closest('.minidoro-btn')) {
+            return;
+        }
+        
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+        if (!panelWrapper) return;
+        
+        this.hasDragged = false;
+        this.dragPending = true;
+        const touch = event.touches[0];
+        this.dragStartPos = { x: touch.clientX, y: touch.clientY };
+        
+        const rect = panelWrapper.getBoundingClientRect();
+        this.dragOffset = {
+            x: touch.clientX - rect.left,
+            y: touch.clientY - rect.top
+        };
+    };
+
+    private onTouchMove = (event: TouchEvent) => {
+        if (!this.isDragging) {
+            if (!this.dragPending) return;
+            const touch = event.touches[0];
+            const dx = Math.abs(touch.clientX - this.dragStartPos.x);
+            const dy = Math.abs(touch.clientY - this.dragStartPos.y);
+            const DRAG_THRESHOLD = 5;
+            if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
+                return;
+            }
+            this.isDragging = true;
+            this.hasDragged = true;
+            this.controlPanelEl?.addClass('dragging');
+        }
+        
+        event.preventDefault();
+        
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+        if (!panelWrapper) return;
+
+        const touch = event.touches[0];
+        const x = touch.clientX - this.dragOffset.x;
+        const y = touch.clientY - this.dragOffset.y;
+
+        const maxX = window.innerWidth - (panelWrapper.offsetWidth || 150);
+        const maxY = window.innerHeight - (panelWrapper.offsetHeight || 100);
+        
+        this.lastPosition = {
+            x: Math.max(0, Math.min(x, maxX)),
+            y: Math.max(0, Math.min(y, maxY))
+        };
+
+        panelWrapper.style.right = 'auto';
+        panelWrapper.style.left = `${this.lastPosition.x}px`;
+        panelWrapper.style.top = `${this.lastPosition.y}px`;
+        panelWrapper.style.position = 'fixed';
+    };
+
+    private onTouchEnd = () => {
         this.dragPending = false;
         if (!this.isDragging) return;
         
