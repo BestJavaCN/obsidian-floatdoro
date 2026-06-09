@@ -23,6 +23,11 @@ export default class PomodoroPlugin extends Plugin {
     private isVisible = true;
     private isPanelExpanded = false;
     private isDisabled = false;
+    private isFlipped = false;
+
+    // Flip related
+    private flipContainerEl: HTMLDivElement | null = null;
+    private backPanelEl: HTMLDivElement | null = null;
 
     // Drag related variables
     private isDragging = false;
@@ -277,8 +282,19 @@ export default class PomodoroPlugin extends Plugin {
         const wrapperEl = document.body.createEl('div', { cls: `minidoro-control-panel-wrapper ${this.settings.panelSize}` });
         this.panelWrapperEl = wrapperEl;
         
-        // Create actual control panel
-        this.controlPanelEl = wrapperEl.createEl('div', { cls: 'minidoro-control-panel' });
+        // Create flip container
+        this.flipContainerEl = wrapperEl.createEl('div', { cls: 'minidoro-flip-container' });
+        
+        // Create front face
+        const frontFace = this.flipContainerEl.createEl('div', { cls: 'minidoro-flip-front' });
+        // Create actual control panel on front face
+        this.controlPanelEl = frontFace.createEl('div', { cls: 'minidoro-control-panel' });
+        
+        // Create back face
+        const backFace = this.flipContainerEl.createEl('div', { cls: 'minidoro-flip-back' });
+        this.backPanelEl = backFace.createEl('div', { cls: 'minidoro-control-panel minidoro-back-panel' });
+        
+        // --- Build front face (control panel) ---
         
         // Create header section (purple area)
         const headerEl = this.controlPanelEl.createEl('div', { 
@@ -346,16 +362,32 @@ export default class PomodoroPlugin extends Plugin {
 		setIcon(completeBtn, 'check');
 		completeBtn.onclick = () => this.handleCompleteClick();
 
-        // Add drag event listeners to control panel only (mouse + touch)
-        this.controlPanelEl.addEventListener('mousedown', this.onDragStart);
+        // --- Build back face (lock button) ---
+        
+        const lockButton = this.backPanelEl.createEl('button', {
+            cls: 'minidoro-lock-button',
+            attr: { 'title': 'Lock vault' }
+        });
+        setIcon(lockButton, 'lock');
+        lockButton.onclick = (event) => {
+            event.stopPropagation();
+            this.lockVault();
+        };
+
+        // Add drag event listeners to wrapper (works on both front and back faces)
+        wrapperEl.addEventListener('mousedown', this.onDragStart);
         document.addEventListener('mousemove', this.onDragMove);
         document.addEventListener('mouseup', this.onDragEnd);
-        this.controlPanelEl.addEventListener('touchstart', this.onTouchStart);
+        wrapperEl.addEventListener('touchstart', this.onTouchStart);
         document.addEventListener('touchmove', this.onTouchMove, { passive: false });
         document.addEventListener('touchend', this.onTouchEnd);
 
-        // Right-click context menu on the control panel
-        this.controlPanelEl.addEventListener('contextmenu', this.onContextMenu);
+        // Right-click context menu on the wrapper to flip the panel
+        wrapperEl.addEventListener('contextmenu', this.onContextMenu);
+    }
+
+    private lockVault() {
+        (this.app as any).commands.executeCommandById('vault-locker:lock-vault');
     }
 
     private toggleVisibility() {
@@ -403,8 +435,11 @@ export default class PomodoroPlugin extends Plugin {
         this.panelHeaderEl = null;
         this.panelWrapperEl = null;
         this.playButtonEl = null;
+        this.flipContainerEl = null;
+        this.backPanelEl = null;
         this.isVisible = false;
         this.isPanelExpanded = false;
+        this.isFlipped = false;
     }
 
     private togglePanel() {
@@ -418,7 +453,9 @@ export default class PomodoroPlugin extends Plugin {
                 // Collapse panel
                 this.pieButtonEl.classList.remove('expanded');
                 panelWrapper.classList.remove('expanded');
+                panelWrapper.classList.remove('minidoro-flipped');
                 this.isPanelExpanded = false;
+                this.isFlipped = false;
             } else {
                 // Expand panel - calculate position below button
                 this.pieButtonEl.classList.add('expanded');
@@ -448,7 +485,7 @@ export default class PomodoroPlugin extends Plugin {
         if (event.button !== 0) return;
         
         const target = event.target as HTMLElement;
-        if (target.closest('.minidoro-btn')) {
+        if (target.closest('.minidoro-btn, .minidoro-lock-button')) {
             return;
         }
         
@@ -468,8 +505,18 @@ export default class PomodoroPlugin extends Plugin {
 
     private onContextMenu = (event: MouseEvent) => {
         event.preventDefault();
-        (this.app as any).commands.executeCommandById('vault-locker:lock-vault');
+        this.toggleFlip();
     };
+
+    private toggleFlip() {
+        if (!this.panelWrapperEl) return;
+        this.isFlipped = !this.isFlipped;
+        if (this.isFlipped) {
+            this.panelWrapperEl.addClass('minidoro-flipped');
+        } else {
+            this.panelWrapperEl.removeClass('minidoro-flipped');
+        }
+    }
 
     private onDragMove = (event: MouseEvent) => {
         if (!this.isDragging) {
@@ -482,7 +529,8 @@ export default class PomodoroPlugin extends Plugin {
             }
             this.isDragging = true;
             this.hasDragged = true;
-            this.controlPanelEl?.addClass('dragging');
+            const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+            panelWrapper?.addClass('dragging');
         }
         
         const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
@@ -510,7 +558,8 @@ export default class PomodoroPlugin extends Plugin {
         if (!this.isDragging) return;
         
         this.isDragging = false;
-        this.controlPanelEl?.removeClass('dragging');
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+        panelWrapper?.removeClass('dragging');
         
         if (this.hasDragged) {
             this.settings.panelX = this.lastPosition.x;
@@ -521,7 +570,7 @@ export default class PomodoroPlugin extends Plugin {
 
     private onTouchStart = (event: TouchEvent) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.minidoro-btn')) {
+        if (target.closest('.minidoro-btn, .minidoro-lock-button')) {
             return;
         }
         
@@ -552,7 +601,8 @@ export default class PomodoroPlugin extends Plugin {
             }
             this.isDragging = true;
             this.hasDragged = true;
-            this.controlPanelEl?.addClass('dragging');
+            const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+            panelWrapper?.addClass('dragging');
         }
         
         event.preventDefault();
@@ -583,7 +633,8 @@ export default class PomodoroPlugin extends Plugin {
         if (!this.isDragging) return;
         
         this.isDragging = false;
-        this.controlPanelEl?.removeClass('dragging');
+        const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
+        panelWrapper?.removeClass('dragging');
         
         if (this.hasDragged) {
             this.settings.panelX = this.lastPosition.x;

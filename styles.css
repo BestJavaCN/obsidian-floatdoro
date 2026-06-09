@@ -22,7 +22,7 @@
 }
 
 /* Dragging state */
-.minidoro-control-panel.dragging {
+.minidoro-control-panel-wrapper.dragging {
   opacity: 0.8;
   cursor: grabbing;
 }
@@ -104,7 +104,7 @@
   }
 }
 
-/* Control panel - fixed size 1:1 square - default medium size */
+/* Control panel wrapper - default medium size */
 .minidoro-control-panel-wrapper {
   position: fixed;
   z-index: 9999;
@@ -115,6 +115,7 @@
   pointer-events: none;
   display: none;
   touch-action: none;
+  perspective: 600px;
 }
 
 /* Small size */
@@ -132,6 +133,49 @@
   transform: translateY(0);
   pointer-events: auto;
   display: block;
+}
+
+/* Flip container - grid-based so wrapper height matches content */
+.minidoro-flip-container {
+  display: grid;
+  transition: transform 0.5s ease;
+  transform-style: preserve-3d;
+}
+
+.minidoro-control-panel-wrapper.minidoro-flipped .minidoro-flip-container {
+  transform: rotateY(180deg);
+}
+
+/* Both faces occupy the same grid cell */
+.minidoro-flip-front,
+.minidoro-flip-back {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+}
+
+.minidoro-flip-front {
+  pointer-events: auto;
+}
+
+.minidoro-flip-back {
+  transform: rotateY(180deg);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Flipped: front not interactive, back interactive */
+.minidoro-control-panel-wrapper.minidoro-flipped .minidoro-flip-front {
+  pointer-events: none;
+}
+
+.minidoro-control-panel-wrapper.minidoro-flipped .minidoro-flip-back {
+  pointer-events: auto;
+}
+
+/* Back panel stretches to fill the grid cell */
+.minidoro-flip-back .minidoro-control-panel {
+  flex: 1;
 }
 
 /* Control panel content with 1:1 aspect ratio */
@@ -404,6 +448,75 @@
 .minidoro-panel-header:focus-visible {
   outline: 2px solid #d8a6e0;
   outline-offset: 4px;
+}
+
+/* Back panel container */
+.minidoro-back-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 8px;
+  background: var(--background-secondary);
+  cursor: default;
+  padding: 8px;
+}
+
+.minidoro-lock-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  flex-shrink: 0;
+}
+
+.minidoro-lock-button:hover {
+  transform: translateY(-2px);
+  background: var(--background-modifier-hover) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.minidoro-lock-button:active {
+  transform: scale(0.95);
+}
+
+.minidoro-lock-button svg {
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+}
+
+/* Small size lock button */
+.minidoro-control-panel-wrapper.small .minidoro-lock-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.minidoro-control-panel-wrapper.small .minidoro-lock-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Large size lock button */
+.minidoro-control-panel-wrapper.large .minidoro-lock-button {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+.minidoro-control-panel-wrapper.large .minidoro-lock-button svg {
+  width: 28px;
+  height: 28px;
 }
 
 @media (prefers-contrast: high) {
