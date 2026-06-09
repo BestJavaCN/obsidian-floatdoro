@@ -536,3 +536,33 @@
     border-width: 2px;
   }
 }
+
+/* Effect toggle buttons (ripple & sakura) */
+.minidoro-effect-btn {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.minidoro-effect-btn.minidoro-effect-active {
+  background: var(--background-modifier-hover) !important;
+  border-color: var(--minidoro-work-color) !important;
+  box-shadow: 0 0 8px rgba(163, 130, 248, 0.3) !important;
+}
+
+.minidoro-effect-btn.minidoro-effect-active svg {
+  color: var(--minidoro-work-color) !important;
+}
+
+/* Effect canvas overlays - ensure no impact on Obsidian UI */
+.minidoro-ripple-canvas,
+.minidoro-sakura-canvas {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}

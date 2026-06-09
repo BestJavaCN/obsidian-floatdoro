@@ -1,6 +1,8 @@
 import { App, Plugin, PluginSettingTab, Setting, Notice, addIcon, setIcon } from 'obsidian';
 import { PomoTimer, TimerState, PomodoroSettings, DEFAULT_SETTINGS, Language } from './PomoTimer';
 import { t } from './i18n';
+import { RippleEffect } from './RippleEffect';
+import { SakuraEffect } from './SakuraEffect';
 
 export default class PomodoroPlugin extends Plugin {
     settings: PomodoroSettings;
@@ -30,6 +32,12 @@ export default class PomodoroPlugin extends Plugin {
     private backPanelEl: HTMLDivElement | null = null;
     private themeToggleBtnEl: HTMLButtonElement | null = null;
 
+    // Effect instances and control buttons
+    private rippleEffect: RippleEffect;
+    private sakuraEffect: SakuraEffect;
+    private rippleToggleBtnEl: HTMLButtonElement | null = null;
+    private sakuraToggleBtnEl: HTMLButtonElement | null = null;
+
     // Drag related variables
     private isDragging = false;
     private hasDragged = false;
@@ -48,6 +56,29 @@ export default class PomodoroPlugin extends Plugin {
                 <circle class="minidoro-progress-circle" cx="10" cy="10" r="8" fill="transparent" stroke-width="4"></circle>
             </svg>
         `);
+
+        // Register wave icon for ripple effect toggle
+        addIcon('minidoro-ripple', `
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 12c1.5-4 3.5-4 5 0s3.5 4 5 0 3.5-4 5 0 3.5 4 5 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+        `);
+
+        // Register flower icon for sakura effect toggle
+        addIcon('minidoro-sakura', `
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C12 2 9 6 9 8C9 10.5 10.5 12 12 12C13.5 12 15 10.5 15 8C15 6 12 2 12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <path d="M12 2C12 2 15 6 15 8C15 10.5 10.5 12 12 12C13.5 12 12 10.5 12 8C12 6 12 2 12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <path d="M12 12C9 10.5 7.5 13 8.5 15C9.5 17 12 15 12 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <path d="M12 12C14.5 13 15.5 10.5 14.5 8.5C13.5 6.5 12 9 12 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <path d="M12 12C14.5 10.5 16.5 13 15.5 15C14.5 17 12 15 12 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <circle cx="12" cy="12" r="1" fill="currentColor"/>
+            </svg>
+        `);
+
+        // Initialize effects
+        this.rippleEffect = new RippleEffect();
+        this.sakuraEffect = new SakuraEffect();
 
         this.timer = new PomoTimer(
             this, // Pass plugin instance for registerInterval
@@ -111,6 +142,8 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     onunload() {
+        this.rippleEffect.stop();
+        this.sakuraEffect.stop();
         this.destroyFloatingPanel();
     }
 
@@ -385,6 +418,28 @@ export default class PomodoroPlugin extends Plugin {
             this.toggleTheme();
         };
 
+        // Ripple effect toggle button (wave shape)
+        this.rippleToggleBtnEl = this.backPanelEl.createEl('button', {
+            cls: 'minidoro-lock-button minidoro-effect-btn',
+            attr: { 'title': 'Toggle water ripple effect' }
+        });
+        setIcon(this.rippleToggleBtnEl, 'minidoro-ripple');
+        this.rippleToggleBtnEl.onclick = (event) => {
+            event.stopPropagation();
+            this.toggleRipple();
+        };
+
+        // Sakura effect toggle button (flower shape)
+        this.sakuraToggleBtnEl = this.backPanelEl.createEl('button', {
+            cls: 'minidoro-lock-button minidoro-effect-btn',
+            attr: { 'title': 'Toggle sakura effect' }
+        });
+        setIcon(this.sakuraToggleBtnEl, 'minidoro-sakura');
+        this.sakuraToggleBtnEl.onclick = (event) => {
+            event.stopPropagation();
+            this.toggleSakura();
+        };
+
         // Add drag event listeners to wrapper (works on both front and back faces)
         wrapperEl.addEventListener('mousedown', this.onDragStart);
         document.addEventListener('mousemove', this.onDragMove);
@@ -420,6 +475,26 @@ export default class PomodoroPlugin extends Plugin {
         const isDark = document.body.classList.contains('theme-dark');
         setIcon(this.themeToggleBtnEl, isDark ? 'sun' : 'moon');
         this.themeToggleBtnEl.setAttribute('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+
+    private toggleRipple() {
+        if (this.rippleEffect.isActive()) {
+            this.rippleEffect.stop();
+            this.rippleToggleBtnEl?.removeClass('minidoro-effect-active');
+        } else {
+            this.rippleEffect.start();
+            this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
+        }
+    }
+
+    private toggleSakura() {
+        if (this.sakuraEffect.isActive()) {
+            this.sakuraEffect.stop();
+            this.sakuraToggleBtnEl?.removeClass('minidoro-effect-active');
+        } else {
+            this.sakuraEffect.start();
+            this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
+        }
     }
 
     private toggleVisibility() {
@@ -470,9 +545,15 @@ export default class PomodoroPlugin extends Plugin {
         this.flipContainerEl = null;
         this.backPanelEl = null;
         this.themeToggleBtnEl = null;
+        this.rippleToggleBtnEl = null;
+        this.sakuraToggleBtnEl = null;
         this.isVisible = false;
         this.isPanelExpanded = false;
         this.isFlipped = false;
+
+        // Stop effects when panel is destroyed
+        this.rippleEffect.stop();
+        this.sakuraEffect.stop();
     }
 
     private togglePanel() {
