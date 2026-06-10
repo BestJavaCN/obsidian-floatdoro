@@ -1,4 +1,4 @@
-/**
+﻿/**
  * WebGL 樱花粒子效果
  * 全屏 WebGL canvas overlay，渲染悬浮樱花花瓣
  * 不影响 Obsidian 原有界面交互（pointer-events: none）
@@ -136,6 +136,7 @@ precision highp float;
 uniform vec3 uDOF;
 uniform vec3 uFade;
 const vec3 fadeCol = vec3(0.08, 0.03, 0.06);
+uniform vec4 uThemeColor;
 varying vec3 pposition;
 varying float psize;
 varying float palpha;
@@ -165,21 +166,39 @@ void main(void) {
 	mat2 flwrm = mat2(flwrcs, -flwrsn, flwrsn, flwrcs);
 	vec2 flwrp = vec2(abs(coord.x), coord.y) * flwrm;
 	float r;
+	float r_glow;
 	if(flwrp.x < 0.0) {
 		r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.36, 0.96) * 0.5);
+		r_glow = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.36, 0.96) * 0.5 * 2.0);
 	} else {
 		r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5);
+		r_glow = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5 * 2.0);
 	}
-	if(r > rstop) discard;
-	vec3 col = mix(vec3(1.0, 0.9, 0.75), vec3(1.0, 0.9, 0.87), r);
+	if(r_glow > 0.0) discard;
+
+	// 预先计算花瓣基础色（光晕区也共用）
+	vec3 petalCol = mix(vec3(1.0, 0.9, 0.75), vec3(1.0, 0.9, 0.87), r);
 	float grady = mix(0.0, 1.0, pow(coord.y * 0.5 + 0.5, 0.35));
-	col *= vec3(3.0, grady, grady);
-	col *= mix(0.9, 1.0, pow(abs(coord.x), 1.0));
-	col = col * diffuse + specular;
-	col = mix(fadeCol, col, distancefade);
-	float alpha = (rstop > 0.001)? (0.5 - r / (rstop * 2.0)) : 1.0;
-	alpha = smoothstep(0.0, 1.0, alpha) * palpha;
-	gl_FragColor = vec4(col * 3.0, alpha);
+	petalCol *= vec3(1.0, grady, grady);
+	petalCol *= mix(0.9, 1.0, pow(abs(coord.x), 1.0));
+	petalCol = petalCol * diffuse + specular;
+	petalCol = mix(fadeCol, petalCol, distancefade);
+
+	vec3 col;
+	float alpha;
+
+	if(r > rstop) {
+		// 光晕区：从花瓣色渐变到光晕色
+		float t = clamp((-r_glow) / 0.55, 0.0, 1.0);
+		col = mix(petalCol * 0.4, uThemeColor.rgb, t);
+		alpha = (1.0 - t * 0.85) * palpha * distancefade;
+	} else {
+		// 花瓣本体
+		col = petalCol * uThemeColor.a;
+		float edgeAlpha = (rstop > 0.001)? (0.5 - r / (rstop * 2.0)) : 1.0;
+		alpha = smoothstep(0.0, 1.0, edgeAlpha) * palpha;
+	}
+	gl_FragColor = vec4(col, alpha);
 }`;
 
 const FX_COMMON_VSH = `
@@ -191,22 +210,6 @@ void main(void) {
 	gl_Position = vec4(aPosition, 0.0, 1.0);
 	texCoord = aPosition.xy * 0.5 + vec2(0.5, 0.5);
 	screenCoord = aPosition.xy * vec2(uResolution.z, 1.0);
-}`;
-
-const BG_FSH = `
-#ifdef GL_ES
-precision highp float;
-#endif
-uniform vec2 uTimes;
-varying vec2 texCoord;
-varying vec2 screenCoord;
-void main(void) {
-	vec3 col;
-	float c;
-	vec2 tmpv = texCoord * vec2(0.8, 1.0) - vec2(0.95, 1.0);
-	c = exp(-pow(length(tmpv) * 1.2, 2.0));
-	col = mix(vec3(0.05, 0.0, 0.03), vec3(0.96,0.91, 1.0) * 1.5, c);
-	gl_FragColor = vec4(col * 0.5, 1.0);
 }`;
 
 const FX_BRIGHTBUF_FSH = `
@@ -264,10 +267,8 @@ void main(void) {
 	vec4 srccol = texture2D(uSrc, texCoord) * 2.0;
 	vec4 bloomcol = texture2D(uBloom, texCoord);
 	vec4 col = srccol + bloomcol * (vec4(1.0) + srccol);
-	col *= smoothstep(1.0, 0.0, pow(length((texCoord - vec2(0.5)) * 2.0), 1.2) * 0.5);
 	col = pow(col, vec4(0.45454545454545));
-	gl_FragColor = vec4(col.rgb, 1.0);
-	gl_FragColor.a = 1.0;
+	gl_FragColor = vec4(col.rgb, srccol.a);
 }`;
 
 // ====== 粒子 & Shader 类型 ======
@@ -534,7 +535,7 @@ export class SakuraEffect {
 	private setViewports() {
 		const gl = this.gl!;
 		this.renderSpec.setSize(gl.canvas.width, gl.canvas.height);
-		gl.clearColor(0.2, 0.2, 0.5, 1.0);
+		gl.clearColor(0, 0, 0, 0);
 		gl.viewport(0, 0, this.renderSpec.width, this.renderSpec.height);
 
 		const rtfunc = (rtname: 'mainRT' | 'wFullRT0' | 'wFullRT1' | 'wHalfRT0' | 'wHalfRT1', rtw: number, rth: number) => {
@@ -549,7 +550,6 @@ export class SakuraEffect {
 	}
 
 	private createEffectLib() {
-		this.effectLib.sceneBg = this.createEffectProgram(FX_COMMON_VSH, BG_FSH, ['uTimes']);
 		this.effectLib.mkBrightBuf = this.createEffectProgram(FX_COMMON_VSH, FX_BRIGHTBUF_FSH);
 		this.effectLib.dirBlur = this.createEffectProgram(FX_COMMON_VSH, FX_DIRBLUR_R4_FSH, ['uBlurDir']);
 		this.effectLib.finalComp = this.createEffectProgram(PP_FINAL_VSH, PP_FINAL_FSH, ['uBloom']);
@@ -561,7 +561,7 @@ export class SakuraEffect {
 		this.renderSpec.pointSize = { min: prm[0], max: prm[1] };
 
 		const prog = this.createProgram(SAKURA_POINT_VSH, SAKURA_POINT_FSH,
-			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uDOF', 'uFade'],
+			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uDOF', 'uFade', 'uThemeColor'],
 			['aPosition', 'aEuler', 'aMisc'])!;
 
 		this.useProgram(prog);
@@ -613,22 +613,6 @@ export class SakuraEffect {
 			p.setEulerAngles(Math.random() * PI2, Math.random() * PI2, Math.random() * PI2);
 			p.setSize(0.9 + Math.random() * 0.1);
 		}
-	}
-
-	private renderBackground() {
-		const gl = this.gl!;
-		gl.disable(gl.DEPTH_TEST);
-		const fx = this.effectLib.sceneBg;
-		gl.useProgram(fx.program);
-		for (const attr in fx.attributes) gl.enableVertexAttribArray(fx.attributes[attr]);
-		gl.uniform3fv(fx.uniforms.uResolution, this.renderSpec.array);
-		gl.uniform2f(fx.uniforms.uTimes, this.timeInfo.elapsed, this.timeInfo.delta);
-		gl.bindBuffer(gl.ARRAY_BUFFER, fx.buffer);
-		gl.vertexAttribPointer(fx.attributes.aPosition, 2, gl.FLOAT, false, 0, 0);
-		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-		for (const attr in fx.attributes) gl.disableVertexAttribArray(fx.attributes[attr]);
-		gl.useProgram(null);
-		gl.enable(gl.DEPTH_TEST);
 	}
 
 	private renderPointFlowers() {
@@ -685,6 +669,12 @@ export class SakuraEffect {
 		gl.uniform3fv(prog.uniforms.uResolution, this.renderSpec.array);
 		gl.uniform3fv(prog.uniforms.uDOF, Vec3.arrayForm(this.camera.dof));
 		gl.uniform3fv(prog.uniforms.uFade, Vec3.arrayForm(pf.fader));
+
+		const isDark = document.body.classList.contains('theme-dark');
+		gl.uniform4f(prog.uniforms.uThemeColor,
+			isDark ? 0.03 : 0.012, isDark ? 0.015 : 0.005, isDark ? 0.06 : 0.03,  // glow RGB
+			isDark ? 0.8 : 1.8   // brightness
+		);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, pf.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, pf.dataArray, gl.DYNAMIC_DRAW);
@@ -786,9 +776,8 @@ export class SakuraEffect {
 		gl.enable(gl.DEPTH_TEST);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderSpec.mainRT!.frameBuffer);
 		gl.viewport(0, 0, this.renderSpec.mainRT!.width, this.renderSpec.mainRT!.height);
-		gl.clearColor(0.005, 0, 0.05, 0);
+		gl.clearColor(0, 0, 0, 0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-		this.renderBackground();
 		this.renderPointFlowers();
 		this.renderPostProcess();
 	}
@@ -841,7 +830,6 @@ export class SakuraEffect {
 			height: 100%;
 			pointer-events: none;
 			z-index: 0;
-			opacity: 0.2;
 		`;
 		document.body.appendChild(this.canvas);
 
