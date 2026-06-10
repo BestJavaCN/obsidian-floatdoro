@@ -292,9 +292,9 @@ export class RippleEffect {
 			waterColorScale: 4, specAlpha: 0.70, heightAlpha: 0.70, canvasOpacity: 0.85,
 		},
 		'mist': {  // 薄雾 — 极淡清透，若隐若现（与白底色差 3~10）
-			waterR: 244, waterG: 244, waterB: 248,
-			specR: 240, specG: 243, specB: 240,
-			waterColorScale: 9, specAlpha: 0.80, heightAlpha: 0.80, canvasOpacity: 0.85,
+			waterR: 235, waterG: 238, waterB: 248,
+			specR: 255, specG: 255, specB: 255,
+			waterColorScale: 3, specAlpha: 0.95, heightAlpha: 0.95, canvasOpacity: 0.95,
 		},
 	};
 
