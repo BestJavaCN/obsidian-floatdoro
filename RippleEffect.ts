@@ -47,7 +47,8 @@ export class RippleEffect {
 	private prevMouseY = -1000;
 
 	// --- 自动涟漪 ---
-	private autoRippleTimer = 0;
+	private nextAutoRippleTime = 0;
+	private lastMouseMoveTime = 0;
 
 	// --- 用户可控强度 (0~1，插件设置滑块控制) ---
 	private intensity = 0.5;
@@ -78,7 +79,7 @@ export class RippleEffect {
 	//   1.0    → 能量永不衰减，无限扩散
 	//   >1.0   → 每帧能量放大，Float32 迅速溢出为 Infinity → NaN 污染全场
 	//   负数    → 每帧正负翻转，视觉闪烁怪异
-	private readonly DAMPING = 0.93;
+	private readonly DAMPING = 0.9;
 
 	// ── MOUSE_TRAIL_STRENGTH ──────────────────────────────────────────────
 	// 鼠标划过时写入高度场的峰值。最终值 = 此值 × intensity。
@@ -112,25 +113,20 @@ export class RippleEffect {
 	private readonly MOUSE_TRAIL_STEP = 10;
 
 	// ── AUTO_DROP_STRENGTH ────────────────────────────────────────────────
-	// 自动涟漪（水面平静时产出的单点扰动）强度。
-	// 代码路径同 MOUSE_TRAIL_STRENGTH: buf1[idx] += strength * exp(...)
-	// 有效范围: 任意有限实数（同 MOUSE_TRAIL_STRENGTH）
-	private readonly AUTO_DROP_STRENGTH = 5;
+	// 自动涟漪基准强度（每个雨滴在此基础上随机缩放 0.3-1.2 倍）。
+	private readonly AUTO_DROP_BASE_STRENGTH = 3;
 
 	// ── AUTO_DROP_RADIUS ──────────────────────────────────────────────────
-	// 自动涟漪高斯半径（模拟格子数）。
-	// 代码路径同 MOUSE_TRAIL_WIDTH: Math.ceil(radiusCells)
-	// 有效范围: > 0（同 MOUSE_TRAIL_WIDTH）
-	private readonly AUTO_DROP_RADIUS = 8;
+	// 雨滴半径范围 2~20 格，确保最小滴也覆盖 5×5 格以保持圆形。
+	private readonly AUTO_DROP_MIN_RADIUS = 2;
+	private readonly AUTO_DROP_MAX_RADIUS = 20;
 
-	// ── AUTO_RIPPLE_INTERVAL ──────────────────────────────────────────────
-	// 两次自动涟漪的最小间隔（毫秒）。
-	// 代码: if (now - timer < INTERVAL) return;  ← 未到间隔则跳过
-	// 有效范围: 任意实数
-	//   0 或负数 → 条件永假, 每帧都触发 (60fps), 涟漪密集
-	//   2000     → 2 秒一个, 适中 (当前值)
-	//   很大      → 间隔极长, 几乎不触发
-	private readonly AUTO_RIPPLE_INTERVAL = 2000;
+	// ── AUTO_RIPPLE_SPEED ─────────────────────────────────────────────────
+	// 自动涟漪速率 (0~1, 设置滑块控制)。
+	//   speed=0.01(最慢): 667~1000ms, speed=1(最快): 33~333ms
+	//   speed=0 关闭自动涟漪以节省性能
+	// 每次触发时产生 1~3 个大小不一的随机雨滴，部分聚集，模拟真实下雨。
+	private autoRippleSpeed = 0.5;
 
 	// ═══════════════════════════════════════════════════════════════════════════
 	//  【二、渲染参数】
@@ -182,7 +178,7 @@ export class RippleEffect {
 	//   10      → 高光锐利, 有明显方向性 (当前值)
 	//   负数    → pow(0.5,-2)=4 → 逻辑可用但不合物理直觉
 	//   极大值   → pow(0.99,1000)≈0 → 高光过于集中到几乎不可见
-	private readonly SPECULAR_POWER = 10;
+	private readonly SPECULAR_POWER = 20;
 
 	// ═══════════════════════════════════════════════════════════════════════════
 	//  【三、暗色/亮色双套预设】—— 运行时根据 Obsidian body 的 theme-dark 自动切换
@@ -341,7 +337,7 @@ export class RippleEffect {
 		this.offCtx = this.offscreen.getContext('2d');
 
 		this.initSimulation();
-		this.autoRippleTimer = performance.now();
+		this.nextAutoRippleTime = performance.now() + this.randomAutoInterval();
 
 		window.addEventListener('resize', this.resizeBound);
 		document.addEventListener('mousemove', this.onMouseMoveBound, { passive: true });
@@ -437,6 +433,7 @@ export class RippleEffect {
 	private onMouseMove(e: MouseEvent): void {
 		this.mouseX = e.clientX;
 		this.mouseY = e.clientY;
+		this.lastMouseMoveTime = performance.now();
 	}
 
 	private onMouseLeave(): void {
@@ -498,27 +495,46 @@ export class RippleEffect {
 	// 自动涟漪
 	// ====================================================================
 
-	private isWaterCalm(): boolean {
-		if (!this.buf1) return true;
-		const len = this.buf1.length;
-		const step = Math.max(1, Math.floor(len / 500));
-		for (let i = 0; i < len; i += step) {
-			if (Math.abs(this.buf1[i]) > 0.001) return false;
-		}
-		return true;
+	private randomAutoInterval(): number {
+		// speed=0.01(最慢): 667~1000ms, speed=1(最快): 33~333ms
+		const min = 2000 - this.autoRippleSpeed * 1900;
+		const max = 3000 - this.autoRippleSpeed * 2000;
+		return min + Math.random() * (max - min);
+	}
+
+	public setAutoRippleSpeed(speed: number): void {
+		this.autoRippleSpeed = Math.max(0, Math.min(1, speed));
 	}
 
 	private applyAutoRipples(now: number): void {
-		if (now - this.autoRippleTimer < this.AUTO_RIPPLE_INTERVAL) return;
-		if (!this.isWaterCalm()) return;
+		if (this.autoRippleSpeed <= 0) return;
+		if (now < this.nextAutoRippleTime) return;
+		// 鼠标最近 500ms 内移动过 → 不触发自动涟漪
+		if (now - this.lastMouseMoveTime < 500) return;
 
-		this.autoRippleTimer = now;
-		const strength = this.AUTO_DROP_STRENGTH * this.intensity;
-		if (strength <= 0) return;
+		// 生成下一次的随机间隔
+		this.nextAutoRippleTime = now + this.randomAutoInterval();
 
-		const x = Math.random() * window.innerWidth;
-		const y = Math.random() * window.innerHeight;
-		this.addGaussian(x, y, this.AUTO_DROP_RADIUS, strength);
+		// ── 雨滴簇：每次产生 1~3 个随机大小、聚集在 200px 范围内的雨滴 ──
+		const dropCount = Math.random() < 0.35 ? 3 : (Math.random() < 0.5 ? 2 : 1);
+		const clusterCx = Math.random() * window.innerWidth;
+		const clusterCy = Math.random() * window.innerHeight;
+		const clusterSpread = 200;
+
+		for (let i = 0; i < dropCount; i++) {
+			// 半径在 0.3~20 格之间随机，偏向中值以模拟多数中等雨滴
+			const t = Math.random();
+			const radius = this.AUTO_DROP_MIN_RADIUS +
+				t * t * (this.AUTO_DROP_MAX_RADIUS - this.AUTO_DROP_MIN_RADIUS);
+			// 强度按半径平方缩放：小滴近乎消失，大滴明显飞溅
+			const ratio = radius / this.AUTO_DROP_MAX_RADIUS;
+			const strength = this.AUTO_DROP_BASE_STRENGTH * this.intensity *
+				(0.05 + 0.95 * ratio * ratio);
+
+			const x = clusterCx + (Math.random() - 0.5) * clusterSpread;
+			const y = clusterCy + (Math.random() - 0.5) * clusterSpread;
+			this.addGaussian(x, y, radius, strength);
+		}
 	}
 
 	// ====================================================================

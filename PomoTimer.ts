@@ -66,6 +66,8 @@ export interface Translation {
             rippleDarkPresetDesc: string;
             rippleLightPreset: string;
             rippleLightPresetDesc: string;
+            rippleSpeed: string;
+            rippleSpeedDesc: string;
             ripplePresetClassicBlue: string;
             ripplePresetCrystal: string;
             ripplePresetPearl: string;
@@ -368,6 +370,7 @@ export interface PomodoroSettings {
     rippleIntensity: number;
     rippleDarkPreset: string;
     rippleLightPreset: string;
+    rippleSpeed: number;
     panelX?: number;
     panelY?: number;
     // Lock monitoring settings
@@ -395,6 +398,7 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     rippleIntensity: 0.5,
     rippleDarkPreset: 'classic-blue',
     rippleLightPreset: 'warm-gold',
+    rippleSpeed: 0.5,
     lockEnableRipple: false,
     lockEnableSakura: false,
     unlockDisableRipple: false,

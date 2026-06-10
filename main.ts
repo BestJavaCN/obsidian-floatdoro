@@ -91,6 +91,7 @@ export default class PomodoroPlugin extends Plugin {
 
         // Apply saved ripple settings
         this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+        this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
         this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
         this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
 
@@ -175,6 +176,7 @@ export default class PomodoroPlugin extends Plugin {
         this.updateUI(0, 0); 
         this.updatePanelSize();
         this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+        this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
         this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
         this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
     }
@@ -520,6 +522,7 @@ export default class PomodoroPlugin extends Plugin {
         } else {
             this.rippleEffect.start();
             this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+            this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
             this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
             this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
             this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
@@ -743,6 +746,7 @@ export default class PomodoroPlugin extends Plugin {
         if (this.settings.lockEnableRipple && !this.rippleEffect.isActive()) {
             this.rippleEffect.start();
             this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+            this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
             this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
             this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
             this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
@@ -1484,6 +1488,18 @@ class PomodoroSettingTab extends PluginSettingTab {
                 .setDynamicTooltip()
                 .onChange(async (value) => {
                     this.plugin.settings.rippleIntensity = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.rippleSpeed)
+            .setDesc(settingsTrans.rippleSpeedDesc)
+            .addSlider(slider => slider
+                .setLimits(0, 1, 0.1)
+                .setValue(this.plugin.settings.rippleSpeed)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                    this.plugin.settings.rippleSpeed = value;
                     await this.plugin.saveSettings();
                 }));
 
