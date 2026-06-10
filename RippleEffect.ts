@@ -9,6 +9,19 @@
  *   波从划痕两侧向外扩散，产生"手指划过水面"的锥形尾迹效果。
  */
 
+type RipplePreset = {
+    waterR: number;
+    waterG: number;
+    waterB: number;
+    specR: number;
+    specG: number;
+    specB: number;
+    waterColorScale: number;
+    specAlpha: number;
+    heightAlpha: number;
+    canvasOpacity: number;
+};
+
 export class RippleEffect {
 	// --- DOM ---
 	private canvas: HTMLCanvasElement | null = null;
@@ -175,8 +188,8 @@ export class RippleEffect {
 	//  【三、暗色/亮色双套预设】—— 运行时根据 Obsidian body 的 theme-dark 自动切换
 	// ═══════════════════════════════════════════════════════════════════════════
 	//
-	//  实际值 = 预设值 × (0.3 + intensity×0.7)
-	//  即 intensity=0 时 30%, intensity=1 时 100%。
+	//  intensity 只影响物理扰动强度（鼠标划痕、自动涟漪），不影响渲染 alpha。
+	//  预设中的 alpha / canvasOpacity 值直接对应视觉效果。
 
 	// ── waterR / waterG / waterB ───────────────────────────────────────────
 	// 水面底色 RGB。白色高光叠加在此颜色之上。
@@ -212,35 +225,78 @@ export class RippleEffect {
 	// 亮色需要蓝底才能让白高光可见。
 	// 代码: waterTint = min(1, |height| * waterColorScale)
 
-	//  暗色模式预设：纯白高光在暗背景上直接可见，无需水色底衬
-	private readonly dark = {
-		waterR:        180,   // 水底色 R
-		waterG:        210,
-		waterB:        240,
-		waterColorScale: 4,   // 波高→水色混合系数
-		specR:         255,   // 高光颜色 R（暗色=纯白）
-		specG:         255,
-		specB:         255,
-		specAlpha:     0.40,  // 高光 alpha 系数
-		heightAlpha:   0.04,  // 波高→alpha 系数
-		canvasOpacity: 0.40,  // 全局不透明度乘数
+	// ── 预设类型 ───────────────────────────────────────────────────────────
+	//  亮色 alpha 值需高于暗色，因为白色背景需要更强不透明度才能可见。
+
+	private readonly DARK_PRESETS: Record<string, RipplePreset> = {
+		'classic-blue': {  // 经典蓝白（原暗色默认，alpha 提升至可见）
+			waterR: 180, waterG: 210, waterB: 240,
+			specR: 255, specG: 255, specB: 255,
+			waterColorScale: 4, specAlpha: 0.60, heightAlpha: 0.12, canvasOpacity: 0.55,
+		},
+		'crystal': {  // 水晶清透 — 淡蓝底 + 纯白高光
+			waterR: 200, waterG: 225, waterB: 248,
+			specR: 255, specG: 255, specB: 255,
+			waterColorScale: 3, specAlpha: 0.65, heightAlpha: 0.12, canvasOpacity: 0.55,
+		},
+		'pearl': {  // 珍珠虹彩 — 紫底 + 暖白高光
+			waterR: 220, waterG: 210, waterB: 245,
+			specR: 255, specG: 252, specB: 235,
+			waterColorScale: 4, specAlpha: 0.60, heightAlpha: 0.12, canvasOpacity: 0.55,
+		},
+		'sunrise': {  // 旭日暖金 — 琥珀底 + 暖金高光
+			waterR: 210, waterG: 190, waterB: 155,
+			specR: 255, specG: 248, specB: 200,
+			waterColorScale: 5, specAlpha: 0.65, heightAlpha: 0.14, canvasOpacity: 0.55,
+		},
+		'aurora': {  // 极光彩 — 蓝底 + 粉紫高光
+			waterR: 190, waterG: 215, waterB: 252,
+			specR: 255, specG: 220, specB: 255,
+			waterColorScale: 4, specAlpha: 0.62, heightAlpha: 0.12, canvasOpacity: 0.55,
+		},
+		'pure-white': {  // 纯白 — 极淡蓝底 + 纯白高光，最干净
+			waterR: 210, waterG: 225, waterB: 245,
+			specR: 255, specG: 255, specB: 255,
+			waterColorScale: 2, specAlpha: 0.70, heightAlpha: 0.12, canvasOpacity: 0.55,
+		},
 	};
 
-	//  亮色模式预设：暖金高光 + 极淡底色，模拟阳光水面
-	//  alpha 基准值已补偿 intensity=0.5 的折扣（gFactor×0.75, s/hAlpha×0.65），
-	//  使 intensity=0.5 接近旧版 intensity=1.0 的视觉效果
-	private readonly light = {
-		waterR:        245,   // 水底色 R（极淡暖白，仅微偏暖）
-		waterG:        242,
-		waterB:        235,
-		waterColorScale: 5,   // mag=0.2 完全显色
-		specR:         255,   // 高光颜色 R（暖金阳光感）
-		specG:         252,
-		specB:         210,
-		specAlpha:     1.50,  // 高光 alpha 系数（×2.05 补偿）
-		heightAlpha:   1.10,  // 波高→alpha 系数（×2.05 补偿）
-		canvasOpacity: 1.00,  // 全局不透明度乘数（已含补偿）
+	private readonly LIGHT_PRESETS: Record<string, RipplePreset> = {
+		'warm-gold': {  // 暖金 — 极淡底 + 暖黄高光
+			waterR: 248, waterG: 245, waterB: 240,
+			specR: 255, specG: 248, specB: 200,
+			waterColorScale: 4, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		},
+		'crystal': {  // 水晶清透 — 淡蓝底 + 纯白高光
+			waterR: 235, waterG: 242, waterB: 252,
+			specR: 255, specG: 255, specB: 255,
+			waterColorScale: 5, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		},
+		'pearl': {  // 珍珠虹彩 — 粉底 + 暖黄高光
+			waterR: 250, waterG: 238, waterB: 250,
+			specR: 255, specG: 252, specB: 225,
+			waterColorScale: 4, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		},
+		'sunrise': {  // 旭日暖金 — 浓金底 + 暖白高光
+			waterR: 252, waterG: 230, waterB: 200,
+			specR: 255, specG: 255, specB: 230,
+			waterColorScale: 8, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		},
+		'refraction': {  // 偏光折射 — 蓝底 + 暖黄高光，冷暖对比最强
+			waterR: 225, waterG: 238, waterB: 255,
+			specR: 255, specG: 240, specB: 200,
+			waterColorScale: 6, specAlpha: 0.70, heightAlpha: 0.50, canvasOpacity: 0.85,
+		},
+		'dawn': {  // 晨曦微光 — 暖底 + 粉金高光
+			waterR: 252, waterG: 240, waterB: 230,
+			specR: 255, specG: 240, specB: 210,
+			waterColorScale: 3, specAlpha: 0.55, heightAlpha: 0.40, canvasOpacity: 0.80,
+		},
 	};
+
+	//  当前激活的预设（运行时由 setPreset() 覆写）
+	private dark: RipplePreset = { ...this.DARK_PRESETS['classic-blue'] };
+	private light: RipplePreset = { ...this.LIGHT_PRESETS['warm-gold'] };
 
 	// =========================================================================
 
@@ -314,6 +370,24 @@ export class RippleEffect {
 
 	public setIntensity(value: number): void {
 		this.intensity = Math.max(0, Math.min(1, value));
+	}
+
+	/** 设置亮/暗模式的预设配色。name 为预设键名，mode 为 'dark' 或 'light'。 */
+	public setPreset(name: string, mode: 'dark' | 'light'): void {
+		const presets = mode === 'dark' ? this.DARK_PRESETS : this.LIGHT_PRESETS;
+		const preset = presets[name];
+		if (!preset) return;
+		if (mode === 'dark') {
+			Object.assign(this.dark, preset);
+		} else {
+			Object.assign(this.light, preset);
+		}
+	}
+
+	/** 获取指定模式的所有预设名称列表（供设置下拉框使用）。 */
+	public getPresetNames(mode: 'dark' | 'light'): string[] {
+		const presets = mode === 'dark' ? this.DARK_PRESETS : this.LIGHT_PRESETS;
+		return Object.keys(presets);
 	}
 
 	// ====================================================================
@@ -510,7 +584,7 @@ export class RippleEffect {
 		const preset = this.isDarkMode() ? this.dark : this.light;
 
 		// 全局透明度乘数（原 CSS opacity），直接乘入像素 alpha
-		const gFactor = preset.canvasOpacity * (0.5 + this.intensity * 0.5);
+		const gFactor = preset.canvasOpacity;
 		this.canvas.style.opacity = '1';
 
 		const wr = preset.waterR;
@@ -520,8 +594,8 @@ export class RippleEffect {
 		const specG = preset.specG;
 		const specB = preset.specB;
 		const sp = this.SPECULAR_POWER;
-		const sAlpha = preset.specAlpha * (0.3 + this.intensity * 0.7);
-		const hAlpha = preset.heightAlpha * (0.3 + this.intensity * 0.7);
+		const sAlpha = preset.specAlpha;
+		const hAlpha = preset.heightAlpha;
 
 		// 3D 光照方向 (含 z 分量，模拟光源从斜上方照射)
 		// xy 沿用原版 (-0.6, 1.0)，z 控制光源高度（越小越平掠、越大越顶光）

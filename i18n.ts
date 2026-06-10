@@ -50,7 +50,21 @@ export const translations: Record<Language, Translation> = {
             medium: 'Medium',
             large: 'Large',
             rippleIntensity: 'Ripple intensity',
-            rippleIntensityDesc: 'Strength of the water ripple effect'
+            rippleIntensityDesc: 'Strength of the water ripple effect',
+            rippleSettings: 'Ripple Settings',
+            rippleDarkPreset: 'Dark mode color',
+            rippleDarkPresetDesc: 'Color preset for dark theme',
+            rippleLightPreset: 'Light mode color',
+            rippleLightPresetDesc: 'Color preset for light theme',
+            ripplePresetClassicBlue: 'Classic Blue',
+            ripplePresetCrystal: 'Crystal',
+            ripplePresetPearl: 'Pearl',
+            ripplePresetSunrise: 'Sunrise Gold',
+            ripplePresetAurora: 'Aurora',
+            ripplePresetPureWhite: 'Pure White',
+            ripplePresetWarmGold: 'Warm Gold',
+            ripplePresetRefraction: 'Refraction',
+            ripplePresetDawn: 'Dawn',
         }
     },
     zh: {
@@ -102,7 +116,21 @@ export const translations: Record<Language, Translation> = {
             medium: '中',
             large: '大',
             rippleIntensity: '波纹强度',
-            rippleIntensityDesc: '控制水波纹效果的强度'
+            rippleIntensityDesc: '控制水波纹效果的强度',
+            rippleSettings: '波纹设置',
+            rippleDarkPreset: '暗色模式配色',
+            rippleDarkPresetDesc: '暗色主题下的波纹配色方案',
+            rippleLightPreset: '亮色模式配色',
+            rippleLightPresetDesc: '亮色主题下的波纹配色方案',
+            ripplePresetClassicBlue: '经典蓝白',
+            ripplePresetCrystal: '水晶清透',
+            ripplePresetPearl: '珍珠虹彩',
+            ripplePresetSunrise: '旭日暖金',
+            ripplePresetAurora: '极光彩',
+            ripplePresetPureWhite: '纯白',
+            ripplePresetWarmGold: '暖金',
+            ripplePresetRefraction: '偏光折射',
+            ripplePresetDawn: '晨曦微光',
         }
     }
 };

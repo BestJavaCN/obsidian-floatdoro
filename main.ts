@@ -33,7 +33,7 @@ export default class PomodoroPlugin extends Plugin {
     private themeToggleBtnEl: HTMLButtonElement | null = null;
 
     // Effect instances and control buttons
-    private rippleEffect: RippleEffect;
+    rippleEffect: RippleEffect;
     private sakuraEffect: SakuraEffect;
     private rippleToggleBtnEl: HTMLButtonElement | null = null;
     private sakuraToggleBtnEl: HTMLButtonElement | null = null;
@@ -79,6 +79,11 @@ export default class PomodoroPlugin extends Plugin {
         // Initialize effects
         this.rippleEffect = new RippleEffect();
         this.sakuraEffect = new SakuraEffect();
+
+        // Apply saved ripple settings
+        this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+        this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
+        this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
 
         this.timer = new PomoTimer(
             this, // Pass plugin instance for registerInterval
@@ -157,6 +162,8 @@ export default class PomodoroPlugin extends Plugin {
         this.updateUI(0, 0); 
         this.updatePanelSize();
         this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+        this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
+        this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
     }
     
     private updatePanelSize() {
@@ -485,6 +492,8 @@ export default class PomodoroPlugin extends Plugin {
         } else {
             this.rippleEffect.start();
             this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+            this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
+            this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
             this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
         }
     }
@@ -1326,6 +1335,10 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName(settingsTrans.rippleSettings)
+            .setHeading();
+
+        new Setting(containerEl)
             .setName(settingsTrans.rippleIntensity)
             .setDesc(settingsTrans.rippleIntensityDesc)
             .addSlider(slider => slider
@@ -1336,6 +1349,40 @@ class PomodoroSettingTab extends PluginSettingTab {
                     this.plugin.settings.rippleIntensity = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.rippleDarkPreset)
+            .setDesc(settingsTrans.rippleDarkPresetDesc)
+            .addDropdown(dropdown => {
+                for (const name of this.plugin.rippleEffect.getPresetNames('dark')) {
+                    const labelKey = `ripplePreset${name.charAt(0).toUpperCase() + name.slice(1).replace(/-./g, (s: string) => s[1].toUpperCase())}` as keyof typeof settingsTrans;
+                    const label = settingsTrans[labelKey] ?? name;
+                    dropdown.addOption(name, label);
+                }
+                dropdown.setValue(this.plugin.settings.rippleDarkPreset);
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.rippleDarkPreset = value;
+                    await this.plugin.saveSettings();
+                });
+                return dropdown;
+            });
+
+        new Setting(containerEl)
+            .setName(settingsTrans.rippleLightPreset)
+            .setDesc(settingsTrans.rippleLightPresetDesc)
+            .addDropdown(dropdown => {
+                for (const name of this.plugin.rippleEffect.getPresetNames('light')) {
+                    const labelKey = `ripplePreset${name.charAt(0).toUpperCase() + name.slice(1).replace(/-./g, (s: string) => s[1].toUpperCase())}` as keyof typeof settingsTrans;
+                    const label = settingsTrans[labelKey] ?? name;
+                    dropdown.addOption(name, label);
+                }
+                dropdown.setValue(this.plugin.settings.rippleLightPreset);
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.rippleLightPreset = value;
+                    await this.plugin.saveSettings();
+                });
+                return dropdown;
+            });
 
         new Setting(containerEl)
             .setName(settingsTrans.notification)

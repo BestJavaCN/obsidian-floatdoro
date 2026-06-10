@@ -61,6 +61,20 @@ export interface Translation {
             large: string;
             rippleIntensity: string;
             rippleIntensityDesc: string;
+            rippleSettings: string;
+            rippleDarkPreset: string;
+            rippleDarkPresetDesc: string;
+            rippleLightPreset: string;
+            rippleLightPresetDesc: string;
+            ripplePresetClassicBlue: string;
+            ripplePresetCrystal: string;
+            ripplePresetPearl: string;
+            ripplePresetSunrise: string;
+            ripplePresetAurora: string;
+            ripplePresetPureWhite: string;
+            ripplePresetWarmGold: string;
+            ripplePresetRefraction: string;
+            ripplePresetDawn: string;
         };
 }
 
@@ -342,6 +356,8 @@ export interface PomodoroSettings {
     language: Language;
     panelSize: 'small' | 'medium' | 'large';
     rippleIntensity: number;
+    rippleDarkPreset: string;
+    rippleLightPreset: string;
     panelX?: number;
     panelY?: number;
 }
@@ -361,5 +377,7 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     showInStatusBar: false,
     language: 'en',
     panelSize: 'medium',
-    rippleIntensity: 0.5
+    rippleIntensity: 0.5,
+    rippleDarkPreset: 'classic-blue',
+    rippleLightPreset: 'warm-gold',
 };
