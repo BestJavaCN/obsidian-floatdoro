@@ -54,17 +54,15 @@ const Mat4 = {
 		m[12] = 0;                 m[13] = 0;                 m[14] = (-2.0 * far * near) / (far - near); m[15] = 0;
 	},
 	loadLookAt(m: Float32Array, vpos: Vec3, vlook: Vec3, vup: Vec3): void {
-		const frontv = Vec3.create(vpos.x - vlook.x, vpos.y - vlook.y, vpos.z - vlook.z);
-		Vec3.normalize(frontv);
-		const sidev = Vec3.create(1, 0, 0);
-		Vec3.cross(sidev, vup, frontv);
-		Vec3.normalize(sidev);
-		const topv = Vec3.create(1, 0, 0);
-		Vec3.cross(topv, frontv, sidev);
-		Vec3.normalize(topv);
-		m[0] = sidev.x;  m[1] = topv.x;  m[2] = frontv.x;  m[3] = 0;
-		m[4] = sidev.y;  m[5] = topv.y;  m[6] = frontv.y;  m[7] = 0;
-		m[8] = sidev.z;  m[9] = topv.z;  m[10] = frontv.z; m[11] = 0;
+		_frontv.x = vpos.x - vlook.x; _frontv.y = vpos.y - vlook.y; _frontv.z = vpos.z - vlook.z;
+		Vec3.normalize(_frontv);
+		Vec3.cross(_sidev, vup, _frontv);
+		Vec3.normalize(_sidev);
+		Vec3.cross(_topv, _frontv, _sidev);
+		Vec3.normalize(_topv);
+		m[0] = _sidev.x;  m[1] = _topv.x;  m[2] = _frontv.x;  m[3] = 0;
+		m[4] = _sidev.y;  m[5] = _topv.y;  m[6] = _frontv.y;  m[7] = 0;
+		m[8] = _sidev.z;  m[9] = _topv.z;  m[10] = _frontv.z; m[11] = 0;
 		m[12] = -(vpos.x * m[0] + vpos.y * m[4] + vpos.z * m[8]);
 		m[13] = -(vpos.x * m[1] + vpos.y * m[5] + vpos.z * m[9]);
 		m[14] = -(vpos.x * m[2] + vpos.y * m[6] + vpos.z * m[10]);
@@ -252,20 +250,20 @@ interface FxProgram {
 }
 
 class BlossomParticle {
-	velocity = new Array(3).fill(0);
-	rotation = new Array(3).fill(0);
-	position = new Array(3).fill(0);
-	euler = new Array(3).fill(0);
-	color = new Array(3).fill(0);
+	velocity: [number, number, number] = [0, 0, 0];
+	rotation: [number, number, number] = [0, 0, 0];
+	position: [number, number, number] = [0, 0, 0];
+	euler: [number, number, number] = [0, 0, 0];
+	color: [number, number, number] = [0, 0, 0];
 	size = 1.0;
 	alpha = 1.0;
 	zkey = 0.0;
 
-	setVelocity(vx: number, vy: number, vz: number) { this.velocity = [vx, vy, vz]; }
-	setRotation(rx: number, ry: number, rz: number) { this.rotation = [rx, ry, rz]; }
-	setPosition(nx: number, ny: number, nz: number) { this.position = [nx, ny, nz]; }
-	setEulerAngles(rx: number, ry: number, rz: number) { this.euler = [rx, ry, rz]; }
-	setColor(r: number, g: number, b: number) { this.color = [r, g, b]; }
+	setVelocity(vx: number, vy: number, vz: number) { this.velocity[0] = vx; this.velocity[1] = vy; this.velocity[2] = vz; }
+	setRotation(rx: number, ry: number, rz: number) { this.rotation[0] = rx; this.rotation[1] = ry; this.rotation[2] = rz; }
+	setPosition(nx: number, ny: number, nz: number) { this.position[0] = nx; this.position[1] = ny; this.position[2] = nz; }
+	setEulerAngles(rx: number, ry: number, rz: number) { this.euler[0] = rx; this.euler[1] = ry; this.euler[2] = rz; }
+	setColor(r: number, g: number, b: number) { this.color[0] = r; this.color[1] = g; this.color[2] = b; }
 	setSize(s: number) { this.size = s; }
 
 	update(dt: number) {
@@ -279,6 +277,12 @@ class BlossomParticle {
 }
 
 // ====== 主效果类 ======
+
+// 复用 Vec3 实例避免每帧 GC
+const _frontv = Vec3.create(0, 0, 0);
+const _sidev = Vec3.create(1, 0, 0);
+const _topv = Vec3.create(1, 0, 0);
+const _tmpv3 = Vec3.create(0, 0, 0);
 
 export class SakuraEffect {
 	private canvas: HTMLCanvasElement | null = null;
@@ -560,7 +564,6 @@ export class SakuraEffect {
 		this.pointFlower.fader.z = 0.1;
 
 		const PI2 = Math.PI * 2;
-		const tmpv3 = Vec3.create(0, 0, 0);
 		const symmetryrand = () => Math.random() * 2 - 1;
 
 		const isDark = document.body.classList.contains('theme-dark');
@@ -568,12 +571,12 @@ export class SakuraEffect {
 
 		for (let i = 0; i < this.pointFlower.numFlowers; i++) {
 			const p = this.pointFlower.particles[i];
-			tmpv3.x = symmetryrand() * 0.3 - 0.8;
-			tmpv3.y = symmetryrand() * 0.2 - 1.0;
-			tmpv3.z = symmetryrand() * 0.3 - 0.5;
-			Vec3.normalize(tmpv3);
+			_tmpv3.x = symmetryrand() * 0.3 - 0.8;
+			_tmpv3.y = symmetryrand() * 0.2 - 1.0;
+			_tmpv3.z = symmetryrand() * 0.3 - 0.5;
+			Vec3.normalize(_tmpv3);
 			const tmpv = 2.0 + Math.random();
-			p.setVelocity(tmpv3.x * tmpv, tmpv3.y * tmpv, tmpv3.z * tmpv);
+			p.setVelocity(_tmpv3.x * tmpv, _tmpv3.y * tmpv, _tmpv3.z * tmpv);
 			p.setRotation(symmetryrand() * PI2 * 0.5, symmetryrand() * PI2 * 0.5, symmetryrand() * PI2 * 0.5);
 			p.setPosition(
 				symmetryrand() * this.pointFlower.area.x,
@@ -862,12 +865,22 @@ export class SakuraEffect {
 
 		const gl = this.gl;
 		if (gl) {
+			// 释放 render targets
 			['mainRT', 'wFullRT0', 'wFullRT1', 'wHalfRT0', 'wHalfRT1'].forEach(name => {
 				const rt = (this.renderSpec as any)[name] as RenderTarget | null;
 				if (rt) this.deleteRenderTarget(rt);
 			});
 
+			// 释放粒子 buffer
 			if (this.pointFlower.buffer) gl.deleteBuffer(this.pointFlower.buffer);
+
+			// 释放所有 shader program
+			if (this.pointFlower.program) gl.deleteProgram(this.pointFlower.program.program);
+			for (const key of Object.keys(this.effectLib)) {
+				const fx = this.effectLib[key];
+				if (fx.buffer) gl.deleteBuffer(fx.buffer);
+				if (fx.program) gl.deleteProgram(fx.program);
+			}
 
 			const ext = gl.getExtension('WEBGL_lose_context');
 			if (ext) ext.loseContext();
@@ -881,6 +894,7 @@ export class SakuraEffect {
 		this.gl = null;
 		this.sceneStandBy = false;
 		this.effectLib = {};
+		this.pointFlower = {};
 	}
 
 	/**
@@ -888,6 +902,17 @@ export class SakuraEffect {
 	 */
 	public setQuality(q: number): void {
 		this.quality = Math.max(0, Math.min(1, q));
+		// 若效果正在运行，立即重建粒子系统以应用新的粒子数量
+		if (this.active && this.sceneStandBy && this.gl) {
+			const gl = this.gl;
+			if (this.pointFlower.buffer) gl.deleteBuffer(this.pointFlower.buffer);
+			if (this.pointFlower.program) gl.deleteProgram(this.pointFlower.program.program);
+			this.createPointFlowers();
+			this.initPointFlowers();
+			// 更新画布分辨率以匹配新的 quality 缩放
+			this.makeCanvasFullScreen();
+			this.setViewports();
+		}
 	}
 
 	/**
