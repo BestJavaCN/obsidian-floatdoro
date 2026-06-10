@@ -295,6 +295,11 @@ export class RippleEffect {
 			specR: 255, specG: 238, specB: 205,
 			waterColorScale: 4, specAlpha: 0.70, heightAlpha: 0.70, canvasOpacity: 0.85,
 		},
+		'mist': {  // 薄雾 — 极淡清透，若隐若现（与白底色差 3~10）
+			waterR: 244, waterG: 244, waterB: 248,
+			specR: 240, specG: 243, specB: 240,
+			waterColorScale: 9, specAlpha: 0.80, heightAlpha: 0.80, canvasOpacity: 0.85,
+		},
 	};
 
 	//  当前激活的预设（运行时由 setPreset() 覆写）

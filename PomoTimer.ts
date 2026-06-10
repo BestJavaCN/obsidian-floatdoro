@@ -75,6 +75,7 @@ export interface Translation {
             ripplePresetWarmGold: string;
             ripplePresetRefraction: string;
             ripplePresetDawn: string;
+            ripplePresetMist: string;
         };
 }
 

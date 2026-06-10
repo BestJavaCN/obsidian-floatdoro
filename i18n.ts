@@ -65,6 +65,7 @@ export const translations: Record<Language, Translation> = {
             ripplePresetWarmGold: 'Warm Gold',
             ripplePresetRefraction: 'Refraction',
             ripplePresetDawn: 'Dawn',
+            ripplePresetMist: 'Mist',
         }
     },
     zh: {
@@ -131,6 +132,7 @@ export const translations: Record<Language, Translation> = {
             ripplePresetWarmGold: '暖金',
             ripplePresetRefraction: '偏光折射',
             ripplePresetDawn: '晨曦微光',
+            ripplePresetMist: '薄雾',
         }
     }
 };
