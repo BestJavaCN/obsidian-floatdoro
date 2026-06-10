@@ -126,8 +126,8 @@ export class RippleEffect {
 	//  渲染公式（每像素）：
 	//    表面法线 = normalize(cross((0,1,dy), (1,0,dx))) = normalize(-dhdx*S, 1, -dhdy*S)
 	//    specular = pow(max(0, normal · light3D), SPECULAR_POWER)          // [0,1]
-	//    color    = waterColor + specular×255                              // 白色高光叠加
-	//    alpha    = baseAlpha + |height|×heightAlpha + specular×specAlpha
+	//    color    = waterColor + specular×specColor                         // 水底色→高光色
+	//    alpha    = baseAlpha + sqrt(|height|)×heightAlpha + specular×specAlpha
 	//
 	//  注意：法线 y 分量恒为 1（cross product 的结构决定），始终为正。
 	//  因此高光在波峰↔波谷振荡时不会翻转到对面，只会在波面两侧微移。
@@ -212,26 +212,34 @@ export class RippleEffect {
 	// 亮色需要蓝底才能让白高光可见。
 	// 代码: waterTint = min(1, |height| * waterColorScale)
 
-	//  暗色模式预设：白高光在暗背景上直接可见，无需水色底衬
+	//  暗色模式预设：纯白高光在暗背景上直接可见，无需水色底衬
 	private readonly dark = {
-		waterR:        180,   // 任意实数, Uint8Clamped→[0,255]
+		waterR:        180,   // 水底色 R
 		waterG:        210,
 		waterB:        240,
-		waterColorScale: 4,   // 零 → 永不染色，波纹纯靠白色 specular 显现
-		specAlpha:     0.40,  // 任意实数, alpha→[0,1]
-		heightAlpha:   0.04,  // 任意实数, alpha→[0,1]
-		canvasOpacity: 0.40,  // 任意实数, 乘入像素alpha
+		waterColorScale: 4,   // 波高→水色混合系数
+		specR:         255,   // 高光颜色 R（暗色=纯白）
+		specG:         255,
+		specB:         255,
+		specAlpha:     0.40,  // 高光 alpha 系数
+		heightAlpha:   0.04,  // 波高→alpha 系数
+		canvasOpacity: 0.40,  // 全局不透明度乘数
 	};
 
-	//  亮色模式预设：浅水蓝底衬（色差约 50~80），靠不透明度显现波纹
+	//  亮色模式预设：暖金高光 + 极淡底色，模拟阳光水面
+	//  alpha 基准值已补偿 intensity=0.5 的折扣（gFactor×0.75, s/hAlpha×0.65），
+	//  使 intensity=0.5 接近旧版 intensity=1.0 的视觉效果
 	private readonly light = {
-		waterR:        185,   // 任意实数, Uint8Clamped→[0,255]  浅水蓝，色差约 70
-		waterG:        215,
-		waterB:        245,
-		waterColorScale: 20,  // 波高×此值=显色程度。波峰越蓝，平静越白
-		specAlpha:     0.45,  // 任意实数, alpha→[0,1]
-		heightAlpha:   0.20,  // 任意实数, alpha→[0,1]
-		canvasOpacity: 0.85,  // 任意实数, 乘入像素alpha
+		waterR:        245,   // 水底色 R（极淡暖白，仅微偏暖）
+		waterG:        242,
+		waterB:        235,
+		waterColorScale: 5,   // mag=0.2 完全显色
+		specR:         255,   // 高光颜色 R（暖金阳光感）
+		specG:         252,
+		specB:         210,
+		specAlpha:     1.50,  // 高光 alpha 系数（×2.05 补偿）
+		heightAlpha:   1.10,  // 波高→alpha 系数（×2.05 补偿）
+		canvasOpacity: 1.00,  // 全局不透明度乘数（已含补偿）
 	};
 
 	// =========================================================================
@@ -508,6 +516,9 @@ export class RippleEffect {
 		const wr = preset.waterR;
 		const wg = preset.waterG;
 		const wb = preset.waterB;
+		const specR = preset.specR;
+		const specG = preset.specG;
+		const specB = preset.specB;
 		const sp = this.SPECULAR_POWER;
 		const sAlpha = preset.specAlpha * (0.3 + this.intensity * 0.7);
 		const hAlpha = preset.heightAlpha * (0.3 + this.intensity * 0.7);
@@ -542,11 +553,12 @@ export class RippleEffect {
 				const mag = Math.abs(this.buf1[i]);
 				const waterTint = Math.min(1, mag * preset.waterColorScale);
 
-				const sr = Math.round((255 - waterTint * (255 - wr)) * (1 - specular) + 255 * specular);
-				const sg = Math.round((255 - waterTint * (255 - wg)) * (1 - specular) + 255 * specular);
-				const sb = Math.round((255 - waterTint * (255 - wb)) * (1 - specular) + 255 * specular);
+				const sr = Math.round((255 - waterTint * (255 - wr)) * (1 - specular) + specR * specular);
+				const sg = Math.round((255 - waterTint * (255 - wg)) * (1 - specular) + specG * specular);
+				const sb = Math.round((255 - waterTint * (255 - wb)) * (1 - specular) + specB * specular);
 
-				const rawAlpha = (mag * hAlpha + specular * sAlpha) * gFactor;
+				// sqrt(mag) 替代 mag：波尾 alpha 衰减更平缓，在白色背景上仍可见
+				const rawAlpha = (Math.sqrt(mag) * hAlpha + specular * sAlpha) * gFactor;
 				const alpha = rawAlpha < 0.004 ? 0 : Math.min(1, rawAlpha);
 
 				const p = i * 4;
