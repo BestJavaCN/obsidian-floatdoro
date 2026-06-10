@@ -65,7 +65,7 @@ export class RippleEffect {
 	//   1.0    → 能量永不衰减，无限扩散
 	//   >1.0   → 每帧能量放大，Float32 迅速溢出为 Infinity → NaN 污染全场
 	//   负数    → 每帧正负翻转，视觉闪烁怪异
-	private readonly DAMPING = 0.95;
+	private readonly DAMPING = 0.93;
 
 	// ── MOUSE_TRAIL_STRENGTH ──────────────────────────────────────────────
 	// 鼠标划过时写入高度场的峰值。最终值 = 此值 × intensity。
@@ -76,7 +76,7 @@ export class RippleEffect {
 	//   1   	→ 逼真划痕 (当前值)
 	//   负数    → 扰动方向颠倒，波先凹后凸，视觉可用但不自然
 	//   > 10   → 接近 Float32 溢出 (≈3.4e38)，产生 Infinity → NaN
-	private readonly MOUSE_TRAIL_STRENGTH = 4;
+	private readonly MOUSE_TRAIL_STRENGTH = 5;
 
 	// ── MOUSE_TRAIL_WIDTH ─────────────────────────────────────────────────
 	// 划痕高斯半径（模拟格子数，1格≈3px）。
@@ -86,7 +86,7 @@ export class RippleEffect {
 	//   0.5 → ceil=1, 影响 3×3 格子, 几乎看不见
 	//   2.5 → ceil=3, 影响 7×7 格子, 自然 (当前值)
 	//   巨大值 → 每次写入大片区域, CPU 开销线性增长但不崩溃
-	private readonly MOUSE_TRAIL_WIDTH = 2.5;
+	private readonly MOUSE_TRAIL_WIDTH = 2;
 
 	// ── MOUSE_TRAIL_STEP ──────────────────────────────────────────────────
 	// 划痕沿轨迹的采样步长（像素）。
@@ -217,8 +217,8 @@ export class RippleEffect {
 		waterR:        180,   // 任意实数, Uint8Clamped→[0,255]
 		waterG:        210,
 		waterB:        240,
-		waterColorScale: 0,   // 零 → 永不染色，波纹纯靠白色 specular 显现
-		specAlpha:     0.20,  // 任意实数, alpha→[0,1]
+		waterColorScale: 4,   // 零 → 永不染色，波纹纯靠白色 specular 显现
+		specAlpha:     0.40,  // 任意实数, alpha→[0,1]
 		heightAlpha:   0.04,  // 任意实数, alpha→[0,1]
 		canvasOpacity: 0.40,  // 任意实数, 乘入像素alpha
 	};

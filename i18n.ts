@@ -48,7 +48,9 @@ export const translations: Record<Language, Translation> = {
             panelSizeDesc: 'Size of the floating timer panel',
             small: 'Small',
             medium: 'Medium',
-            large: 'Large'
+            large: 'Large',
+            rippleIntensity: 'Ripple intensity',
+            rippleIntensityDesc: 'Strength of the water ripple effect'
         }
     },
     zh: {
@@ -98,7 +100,9 @@ export const translations: Record<Language, Translation> = {
             panelSizeDesc: '悬浮计时器面板的大小',
             small: '小',
             medium: '中',
-            large: '大'
+            large: '大',
+            rippleIntensity: '波纹强度',
+            rippleIntensityDesc: '控制水波纹效果的强度'
         }
     }
 };

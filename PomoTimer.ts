@@ -59,6 +59,8 @@ export interface Translation {
             small: string;
             medium: string;
             large: string;
+            rippleIntensity: string;
+            rippleIntensityDesc: string;
         };
 }
 
@@ -339,6 +341,7 @@ export interface PomodoroSettings {
     showInStatusBar: boolean;
     language: Language;
     panelSize: 'small' | 'medium' | 'large';
+    rippleIntensity: number;
     panelX?: number;
     panelY?: number;
 }
@@ -357,5 +360,6 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     playSound: true,
     showInStatusBar: false,
     language: 'en',
-    panelSize: 'medium'
+    panelSize: 'medium',
+    rippleIntensity: 0.5
 };

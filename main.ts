@@ -156,6 +156,7 @@ export default class PomodoroPlugin extends Plugin {
         this.timer.updateSettings(this.settings); 
         this.updateUI(0, 0); 
         this.updatePanelSize();
+        this.rippleEffect.setIntensity(this.settings.rippleIntensity);
     }
     
     private updatePanelSize() {
@@ -483,6 +484,7 @@ export default class PomodoroPlugin extends Plugin {
             this.rippleToggleBtnEl?.removeClass('minidoro-effect-active');
         } else {
             this.rippleEffect.start();
+            this.rippleEffect.setIntensity(this.settings.rippleIntensity);
             this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
         }
     }
@@ -1320,6 +1322,18 @@ class PomodoroSettingTab extends PluginSettingTab {
                 .setDynamicTooltip()
                 .onChange(async (value) => {
                     this.plugin.settings.overtimeLimit = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.rippleIntensity)
+            .setDesc(settingsTrans.rippleIntensityDesc)
+            .addSlider(slider => slider
+                .setLimits(0, 1, 0.05)
+                .setValue(this.plugin.settings.rippleIntensity)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                    this.plugin.settings.rippleIntensity = value;
                     await this.plugin.saveSettings();
                 }));
 
