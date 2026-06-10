@@ -291,6 +291,7 @@ export class SakuraEffect {
 	private colorLight: [number, number, number] = [0.91, 0.57, 0.62]; // #E8919D
 	private colorDark: [number, number, number] = [0.91, 0.57, 0.62];  // #E8919D
 	private multiColor = false;
+	private lastThemeWasDark: boolean | null = null;  // 跟踪主题变化
 
 	// 渲染状态
 	private renderSpec = {
@@ -591,6 +592,13 @@ export class SakuraEffect {
 	}
 
 	private renderPointFlowers() {
+		// 检测主题切换，重新初始化粒子颜色
+		const isDark = document.body.classList.contains('theme-dark');
+		if (this.lastThemeWasDark !== null && this.lastThemeWasDark !== isDark) {
+			this.initPointFlowers();
+		}
+		this.lastThemeWasDark = isDark;
+
 		const gl = this.gl!;
 		const PI2 = Math.PI * 2;
 		const pf = this.pointFlower;
@@ -894,6 +902,10 @@ export class SakuraEffect {
 	public setColors(lightColor: string, darkColor: string): void {
 		this.colorLight = this.hexToRgb(lightColor);
 		this.colorDark = this.hexToRgb(darkColor);
+		// 如果效果正在运行，立即重新初始化粒子颜色
+		if (this.active && this.sceneStandBy) {
+			this.initPointFlowers();
+		}
 	}
 
 	/**
@@ -901,6 +913,10 @@ export class SakuraEffect {
 	 */
 	public setMultiColor(enabled: boolean): void {
 		this.multiColor = enabled;
+		// 如果效果正在运行，立即重新初始化粒子颜色
+		if (this.active && this.sceneStandBy) {
+			this.initPointFlowers();
+		}
 	}
 
 	/**
