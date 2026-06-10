@@ -291,7 +291,8 @@ export class SakuraEffect {
 	private colorLight: [number, number, number] = [0.91, 0.57, 0.62]; // #E8919D
 	private colorDark: [number, number, number] = [0.91, 0.57, 0.62];  // #E8919D
 	private multiColor = false;
-	private opacity = 1.0;
+	private opacityLight = 1.0;
+	private opacityDark = 1.0;
 	private lastThemeWasDark: boolean | null = null;  // 跟踪主题变化
 
 	// 渲染状态
@@ -657,7 +658,7 @@ export class SakuraEffect {
 		gl.uniformMatrix4fv(prog.uniforms.uModelview, false, this.camera.matrix);
 		gl.uniform3fv(prog.uniforms.uResolution, this.renderSpec.array);
 		gl.uniform3fv(prog.uniforms.uFade, Vec3.arrayForm(pf.fader));
-		gl.uniform1f(prog.uniforms.uOpacity, this.opacity);
+		gl.uniform1f(prog.uniforms.uOpacity, isDark ? this.opacityDark : this.opacityLight);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, pf.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, pf.dataArray, gl.DYNAMIC_DRAW);
@@ -922,11 +923,13 @@ export class SakuraEffect {
 	}
 
 	/**
-	 * 设置花瓣透明度
-	 * @param value 0-1 之间的透明度值
+	 * 设置花瓣透明度（亮色/暗色模式分别设置）
+	 * @param light 亮色模式透明度 0.05-1.0
+	 * @param dark  暗色模式透明度 0.05-1.0
 	 */
-	public setOpacity(value: number): void {
-		this.opacity = Math.max(0.05, Math.min(1.0, value));
+	public setOpacity(light: number, dark: number): void {
+		this.opacityLight = Math.max(0.05, Math.min(1.0, light));
+		this.opacityDark = Math.max(0.05, Math.min(1.0, dark));
 	}
 
 	/**

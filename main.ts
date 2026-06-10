@@ -181,7 +181,7 @@ export default class PomodoroPlugin extends Plugin {
         this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
         this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
         this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
-        this.sakuraEffect.setOpacity(this.settings.sakuraOpacity);
+        this.sakuraEffect.setOpacity(this.settings.sakuraOpacityLight, this.settings.sakuraOpacityDark);
     }
     
     private updatePanelSize() {
@@ -1637,14 +1637,26 @@ class PomodoroSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName(settingsTrans.sakuraOpacity)
-            .setDesc(settingsTrans.sakuraOpacityDesc)
+            .setName(settingsTrans.sakuraOpacityLight)
+            .setDesc(settingsTrans.sakuraOpacityLightDesc)
             .addSlider(slider => slider
                 .setLimits(0.05, 1.0, 0.05)
-                .setValue(this.plugin.settings.sakuraOpacity)
+                .setValue(this.plugin.settings.sakuraOpacityLight)
                 .setDynamicTooltip()
                 .onChange(async (value) => {
-                    this.plugin.settings.sakuraOpacity = value;
+                    this.plugin.settings.sakuraOpacityLight = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.sakuraOpacityDark)
+            .setDesc(settingsTrans.sakuraOpacityDarkDesc)
+            .addSlider(slider => slider
+                .setLimits(0.05, 1.0, 0.05)
+                .setValue(this.plugin.settings.sakuraOpacityDark)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                    this.plugin.settings.sakuraOpacityDark = value;
                     await this.plugin.saveSettings();
                 }));
 

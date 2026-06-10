@@ -96,8 +96,10 @@ export interface Translation {
             sakuraColorDarkDesc: string;
             sakuraMultiColor: string;
             sakuraMultiColorDesc: string;
-            sakuraOpacity: string;
-            sakuraOpacityDesc: string;
+            sakuraOpacityLight: string;
+            sakuraOpacityLightDesc: string;
+            sakuraOpacityDark: string;
+            sakuraOpacityDarkDesc: string;
         };
 }
 
@@ -393,7 +395,8 @@ export interface PomodoroSettings {
     sakuraColorLight: string;
     sakuraColorDark: string;
     sakuraMultiColor: boolean;
-    sakuraOpacity: number;
+    sakuraOpacityLight: number;
+    sakuraOpacityDark: number;
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {
@@ -423,5 +426,6 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     sakuraColorLight: '#E8919D',
     sakuraColorDark: '#E8919D',
     sakuraMultiColor: false,
-    sakuraOpacity: 1.0,
+    sakuraOpacityLight: 1.0,
+    sakuraOpacityDark: 1.0,
 };
