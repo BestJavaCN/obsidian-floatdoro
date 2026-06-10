@@ -161,7 +161,8 @@
   transform: rotateY(180deg);
   pointer-events: none;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Flipped: front not interactive, back interactive */
@@ -173,12 +174,14 @@
   pointer-events: auto;
 }
 
-/* Back panel stretches to fill the grid cell */
+/* Back panel: same size & shape as front (square) */
 .minidoro-flip-back .minidoro-control-panel {
-  flex: 1;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 1;
 }
 
-/* Control panel content with 1:1 aspect ratio */
+/* Control panel base */
 .minidoro-control-panel {
   width: 100%;
   padding: 8px;
@@ -199,10 +202,18 @@
   padding: 6px;
 }
 
+.minidoro-control-panel-wrapper.small .minidoro-back-panel {
+  gap: 4px;
+}
+
 /* Large panel adjustments */
 .minidoro-control-panel-wrapper.large .minidoro-control-panel {
   gap: 8px;
   padding: 10px;
+}
+
+.minidoro-control-panel-wrapper.large .minidoro-back-panel {
+  gap: 8px;
 }
 
 /* Header section with rounded corners - color set by mode class */
@@ -452,20 +463,23 @@
 
 /* Back panel container */
 .minidoro-back-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  align-content: center;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
   background: var(--background-secondary);
   cursor: default;
-  padding: 8px;
+  padding: 9px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .minidoro-lock-button {
-  width: 48px;
-  height: 48px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   border-radius: 12px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary) !important;
@@ -476,7 +490,6 @@
   transition: all 0.2s ease;
   padding: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
-  flex-shrink: 0;
 }
 
 .minidoro-lock-button:hover {
@@ -497,8 +510,6 @@
 
 /* Small size lock button */
 .minidoro-control-panel-wrapper.small .minidoro-lock-button {
-  width: 40px;
-  height: 40px;
   border-radius: 10px;
 }
 
@@ -509,8 +520,6 @@
 
 /* Large size lock button */
 .minidoro-control-panel-wrapper.large .minidoro-lock-button {
-  width: 56px;
-  height: 56px;
   border-radius: 14px;
 }
 

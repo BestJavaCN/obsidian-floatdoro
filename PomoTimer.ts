@@ -76,6 +76,15 @@ export interface Translation {
             ripplePresetRefraction: string;
             ripplePresetDawn: string;
             ripplePresetMist: string;
+            lockSettings: string;
+            lockEnableRipple: string;
+            lockEnableRippleDesc: string;
+            lockEnableSakura: string;
+            lockEnableSakuraDesc: string;
+            unlockDisableRipple: string;
+            unlockDisableRippleDesc: string;
+            unlockDisableSakura: string;
+            unlockDisableSakuraDesc: string;
         };
 }
 
@@ -361,6 +370,11 @@ export interface PomodoroSettings {
     rippleLightPreset: string;
     panelX?: number;
     panelY?: number;
+    // Lock monitoring settings
+    lockEnableRipple: boolean;
+    lockEnableSakura: boolean;
+    unlockDisableRipple: boolean;
+    unlockDisableSakura: boolean;
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {
@@ -381,4 +395,8 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     rippleIntensity: 0.5,
     rippleDarkPreset: 'classic-blue',
     rippleLightPreset: 'warm-gold',
+    lockEnableRipple: false,
+    lockEnableSakura: false,
+    unlockDisableRipple: false,
+    unlockDisableSakura: false,
 };

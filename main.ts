@@ -46,6 +46,14 @@ export default class PomodoroPlugin extends Plugin {
     private dragStartPos = { x: 0, y: 0 };
     private lastPosition = { x: 0, y: 0 };
 
+    // Long-press flip related
+    private longPressTimer: number | null = null;
+    private readonly LONG_PRESS_DURATION = 600; // ms
+
+    // Lock state monitoring
+    private lockObserver: MutationObserver | null = null;
+    private isVaultLocked = false;
+
     async onload() {
         await this.loadSettings();
 
@@ -67,12 +75,13 @@ export default class PomodoroPlugin extends Plugin {
         // Register flower icon for sakura effect toggle
         addIcon('minidoro-sakura', `
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C12 2 9 6 9 8C9 10.5 10.5 12 12 12C13.5 12 15 10.5 15 8C15 6 12 2 12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                <path d="M12 2C12 2 15 6 15 8C15 10.5 10.5 12 12 12C13.5 12 12 10.5 12 8C12 6 12 2 12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                <path d="M12 12C9 10.5 7.5 13 8.5 15C9.5 17 12 15 12 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                <path d="M12 12C14.5 13 15.5 10.5 14.5 8.5C13.5 6.5 12 9 12 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                <path d="M12 12C14.5 10.5 16.5 13 15.5 15C14.5 17 12 15 12 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(60 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(120 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(180 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(240 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(300 12 12)"/>
             </svg>
         `);
 
@@ -144,11 +153,15 @@ export default class PomodoroPlugin extends Plugin {
                 })
             );
         });
+
+        // Start lock state monitoring
+        this.startLockMonitoring();
     }
 
     onunload() {
         this.rippleEffect.stop();
         this.sakuraEffect.stop();
+        this.stopLockMonitoring();
         this.destroyFloatingPanel();
     }
 
@@ -386,7 +399,10 @@ export default class PomodoroPlugin extends Plugin {
             attr: { 'title': 'Start timer' }
         });
         setIcon(this.playButtonEl, 'play');
-        this.playButtonEl.onclick = () => this.handlePauseResumeClick();
+        this.playButtonEl.onclick = () => {
+			if (this.hasDragged) { this.hasDragged = false; return; }
+			this.handlePauseResumeClick();
+		};
         
         // Reset button
         const resetBtn = buttonBar.createEl('button', { 
@@ -394,7 +410,10 @@ export default class PomodoroPlugin extends Plugin {
             attr: { 'title': 'Reset timer' }
         });
         setIcon(resetBtn, 'rotate-ccw');
-        resetBtn.onclick = () => this.handleResetClick();
+        resetBtn.onclick = () => {
+			if (this.hasDragged) { this.hasDragged = false; return; }
+			this.handleResetClick();
+		};
         
         // Complete button
 		const completeBtn = buttonBar.createEl('button', { 
@@ -402,50 +421,59 @@ export default class PomodoroPlugin extends Plugin {
 			attr: { 'title': 'Complete session' }
 		});
 		setIcon(completeBtn, 'check');
-		completeBtn.onclick = () => this.handleCompleteClick();
+		completeBtn.onclick = () => {
+			if (this.hasDragged) { this.hasDragged = false; return; }
+			this.handleCompleteClick();
+		};
 
         // --- Build back face (lock button and theme toggle) ---
         
-        const lockButton = this.backPanelEl.createEl('button', {
-            cls: 'minidoro-lock-button',
-            attr: { 'title': 'Lock vault' }
-        });
-        setIcon(lockButton, 'lock');
-        lockButton.onclick = (event) => {
-            event.stopPropagation();
-            this.lockVault();
-        };
-
-        this.themeToggleBtnEl = this.backPanelEl.createEl('button', {
-            cls: 'minidoro-lock-button',
-            attr: { 'title': 'Toggle theme' }
-        });
-        this.updateThemeToggleIcon();
-        this.themeToggleBtnEl.onclick = (event) => {
-            event.stopPropagation();
-            this.toggleTheme();
-        };
-
-        // Ripple effect toggle button (wave shape)
+        // Ripple effect toggle button (top-left)
         this.rippleToggleBtnEl = this.backPanelEl.createEl('button', {
             cls: 'minidoro-lock-button minidoro-effect-btn',
             attr: { 'title': 'Toggle water ripple effect' }
         });
         setIcon(this.rippleToggleBtnEl, 'minidoro-ripple');
         this.rippleToggleBtnEl.onclick = (event) => {
+            if (this.hasDragged) { this.hasDragged = false; return; }
             event.stopPropagation();
             this.toggleRipple();
         };
 
-        // Sakura effect toggle button (flower shape)
+        // Sakura effect toggle button (top-right)
         this.sakuraToggleBtnEl = this.backPanelEl.createEl('button', {
             cls: 'minidoro-lock-button minidoro-effect-btn',
             attr: { 'title': 'Toggle sakura effect' }
         });
         setIcon(this.sakuraToggleBtnEl, 'minidoro-sakura');
         this.sakuraToggleBtnEl.onclick = (event) => {
+            if (this.hasDragged) { this.hasDragged = false; return; }
             event.stopPropagation();
             this.toggleSakura();
+        };
+
+        // Theme toggle button (bottom-left)
+        this.themeToggleBtnEl = this.backPanelEl.createEl('button', {
+            cls: 'minidoro-lock-button',
+            attr: { 'title': 'Toggle theme' }
+        });
+        this.updateThemeToggleIcon();
+        this.themeToggleBtnEl.onclick = (event) => {
+            if (this.hasDragged) { this.hasDragged = false; return; }
+            event.stopPropagation();
+            this.toggleTheme();
+        };
+
+        // Lock button (bottom-right)
+        const lockButton = this.backPanelEl.createEl('button', {
+            cls: 'minidoro-lock-button',
+            attr: { 'title': 'Lock vault' }
+        });
+        setIcon(lockButton, 'lock');
+        lockButton.onclick = (event) => {
+            if (this.hasDragged) { this.hasDragged = false; return; }
+            event.stopPropagation();
+            this.lockVault();
         };
 
         // Add drag event listeners to wrapper (works on both front and back faces)
@@ -522,6 +550,7 @@ export default class PomodoroPlugin extends Plugin {
         this.isDisabled = true;
         this.timer.stop();
         this.isSessionComplete = false;
+        this.clearLongPressTimer();
 
         if (this.controlPanelEl) {
             const rect = this.controlPanelEl.getBoundingClientRect();
@@ -609,11 +638,6 @@ export default class PomodoroPlugin extends Plugin {
         // Only left-click (button === 0) should initiate dragging
         if (event.button !== 0) return;
         
-        const target = event.target as HTMLElement;
-        if (target.closest('.minidoro-btn, .minidoro-lock-button')) {
-            return;
-        }
-        
         const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
         if (!panelWrapper) return;
         
@@ -642,6 +666,103 @@ export default class PomodoroPlugin extends Plugin {
             this.panelWrapperEl.removeClass('minidoro-flipped');
         }
     }
+
+    // ====================================================================
+    // Lock state monitoring for vault-locker plugin
+    // ====================================================================
+
+    private startLockMonitoring() {
+        // Listen for vault-locker lifecycle events if available
+        try {
+            document.addEventListener('vault-locker:locked', this.onVaultLocked as EventListener);
+            document.addEventListener('vault-locker:unlocked', this.onVaultUnlocked as EventListener);
+        } catch (_) { /* events may not exist */ }
+
+        // Also observe DOM class changes on body (common vault-locker pattern)
+        this.lockObserver = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                if (m.type === 'attributes' && m.attributeName === 'class') {
+                    const body = document.body;
+                    const isLocked = body.classList.contains('is-locked') ||
+                        body.classList.contains('vault-locked') ||
+                        !!document.querySelector('.vault-locker-overlay');
+                    if (isLocked !== this.isVaultLocked) {
+                        this.isVaultLocked = isLocked;
+                        if (isLocked) {
+                            this.onVaultLocked();
+                        } else {
+                            this.onVaultUnlocked();
+                        }
+                    }
+                }
+            }
+        });
+
+        this.lockObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        // Also observe for vault-locker overlay element
+        const overlayObserver = new MutationObserver(() => {
+            const isLocked = !!document.querySelector('.vault-locker-overlay') ||
+                document.body.classList.contains('is-locked') ||
+                document.body.classList.contains('vault-locked');
+            if (isLocked !== this.isVaultLocked) {
+                this.isVaultLocked = isLocked;
+                if (isLocked) {
+                    this.onVaultLocked();
+                } else {
+                    this.onVaultUnlocked();
+                }
+            }
+        });
+
+        overlayObserver.observe(document.body, { childList: true, subtree: true });
+
+        // Store for cleanup
+        (this as any)._overlayObserver = overlayObserver;
+    }
+
+    private stopLockMonitoring() {
+        try {
+            document.removeEventListener('vault-locker:locked', this.onVaultLocked as EventListener);
+            document.removeEventListener('vault-locker:unlocked', this.onVaultUnlocked as EventListener);
+        } catch (_) { /* events may not exist */ }
+
+        if (this.lockObserver) {
+            this.lockObserver.disconnect();
+            this.lockObserver = null;
+        }
+
+        const overlayObserver = (this as any)._overlayObserver as MutationObserver | undefined;
+        if (overlayObserver) {
+            overlayObserver.disconnect();
+            (this as any)._overlayObserver = null;
+        }
+    }
+
+    private onVaultLocked = () => {
+        if (this.settings.lockEnableRipple && !this.rippleEffect.isActive()) {
+            this.rippleEffect.start();
+            this.rippleEffect.setIntensity(this.settings.rippleIntensity);
+            this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
+            this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
+            this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
+        }
+        if (this.settings.lockEnableSakura && !this.sakuraEffect.isActive()) {
+            this.sakuraEffect.start();
+            this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
+        }
+    };
+
+    private onVaultUnlocked = () => {
+        if (this.settings.unlockDisableRipple && this.rippleEffect.isActive()) {
+            this.rippleEffect.stop();
+            this.rippleToggleBtnEl?.removeClass('minidoro-effect-active');
+        }
+        if (this.settings.unlockDisableSakura && this.sakuraEffect.isActive()) {
+            this.sakuraEffect.stop();
+            this.sakuraToggleBtnEl?.removeClass('minidoro-effect-active');
+        }
+    };
 
     private onDragMove = (event: MouseEvent) => {
         if (!this.isDragging) {
@@ -694,11 +815,6 @@ export default class PomodoroPlugin extends Plugin {
     };
 
     private onTouchStart = (event: TouchEvent) => {
-        const target = event.target as HTMLElement;
-        if (target.closest('.minidoro-btn, .minidoro-lock-button')) {
-            return;
-        }
-        
         const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
         if (!panelWrapper) return;
         
@@ -712,7 +828,25 @@ export default class PomodoroPlugin extends Plugin {
             x: touch.clientX - rect.left,
             y: touch.clientY - rect.top
         };
+
+        // Start long-press timer for flip on mobile
+        this.clearLongPressTimer();
+        this.longPressTimer = window.setTimeout(() => {
+            this.longPressTimer = null;
+            // Only flip if not dragging
+            if (!this.isDragging && !this.hasDragged) {
+                this.dragPending = false;
+                this.toggleFlip();
+            }
+        }, this.LONG_PRESS_DURATION);
     };
+
+    private clearLongPressTimer() {
+        if (this.longPressTimer !== null) {
+            window.clearTimeout(this.longPressTimer);
+            this.longPressTimer = null;
+        }
+    }
 
     private onTouchMove = (event: TouchEvent) => {
         if (!this.isDragging) {
@@ -724,6 +858,8 @@ export default class PomodoroPlugin extends Plugin {
             if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
                 return;
             }
+            // Drag started - cancel long-press timer
+            this.clearLongPressTimer();
             this.isDragging = true;
             this.hasDragged = true;
             const panelWrapper = document.body.querySelector('.minidoro-control-panel-wrapper') as HTMLElement;
@@ -755,6 +891,7 @@ export default class PomodoroPlugin extends Plugin {
 
     private onTouchEnd = () => {
         this.dragPending = false;
+        this.clearLongPressTimer();
         if (!this.isDragging) return;
         
         this.isDragging = false;
@@ -1383,6 +1520,50 @@ class PomodoroSettingTab extends PluginSettingTab {
                 });
                 return dropdown;
             });
+
+        new Setting(containerEl)
+            .setName(settingsTrans.lockSettings)
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName(settingsTrans.lockEnableRipple)
+            .setDesc(settingsTrans.lockEnableRippleDesc)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.lockEnableRipple)
+                .onChange(async (value) => {
+                    this.plugin.settings.lockEnableRipple = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.lockEnableSakura)
+            .setDesc(settingsTrans.lockEnableSakuraDesc)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.lockEnableSakura)
+                .onChange(async (value) => {
+                    this.plugin.settings.lockEnableSakura = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.unlockDisableRipple)
+            .setDesc(settingsTrans.unlockDisableRippleDesc)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.unlockDisableRipple)
+                .onChange(async (value) => {
+                    this.plugin.settings.unlockDisableRipple = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.unlockDisableSakura)
+            .setDesc(settingsTrans.unlockDisableSakuraDesc)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.unlockDisableSakura)
+                .onChange(async (value) => {
+                    this.plugin.settings.unlockDisableSakura = value;
+                    await this.plugin.saveSettings();
+                }));
 
         new Setting(containerEl)
             .setName(settingsTrans.notification)
