@@ -115,6 +115,7 @@ const SAKURA_POINT_FSH = `
 #ifdef GL_ES
 precision highp float;
 #endif
+uniform float uOpacity;
 varying float palpha;
 varying float pdist;
 varying vec3 normX;
@@ -145,11 +146,10 @@ void main(void) {
 		r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5);
 	}
 
-	// 花瓣：中心色 → 光晕外缘带粉色调透明（避免亮色模式下出现白色边框）
-	float t = smoothstep(0.0, 0.28, r);
-	vec3 glowColor = mix(vColor, vec3(1.0, 0.88, 0.90), 0.7);
-	vec3 col = mix(vColor, glowColor, t);
-	float alpha = (1.0 - t) * palpha * distancefade;
+	// 花瓣：保持纯正颜色，边缘柔滑淡出；光晕由 bloom 后处理自然产生
+	float t = smoothstep(-0.15, 0.45, r);
+	vec3 col = vColor;
+	float alpha = (1.0 - t) * palpha * distancefade * uOpacity;
 	if(alpha < 0.01) discard;
 
 	gl_FragColor = vec4(col, alpha);
@@ -291,6 +291,7 @@ export class SakuraEffect {
 	private colorLight: [number, number, number] = [0.91, 0.57, 0.62]; // #E8919D
 	private colorDark: [number, number, number] = [0.91, 0.57, 0.62];  // #E8919D
 	private multiColor = false;
+	private opacity = 1.0;
 	private lastThemeWasDark: boolean | null = null;  // 跟踪主题变化
 
 	// 渲染状态
@@ -524,7 +525,7 @@ export class SakuraEffect {
 		this.renderSpec.pointSize = { min: prm[0], max: prm[1] };
 
 		const prog = this.createProgram(SAKURA_POINT_VSH, SAKURA_POINT_FSH,
-			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uFade'],
+			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uFade', 'uOpacity'],
 			['aPosition', 'aEuler', 'aMisc', 'aColor'])!;
 
 		this.useProgram(prog);
@@ -656,6 +657,7 @@ export class SakuraEffect {
 		gl.uniformMatrix4fv(prog.uniforms.uModelview, false, this.camera.matrix);
 		gl.uniform3fv(prog.uniforms.uResolution, this.renderSpec.array);
 		gl.uniform3fv(prog.uniforms.uFade, Vec3.arrayForm(pf.fader));
+		gl.uniform1f(prog.uniforms.uOpacity, this.opacity);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, pf.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, pf.dataArray, gl.DYNAMIC_DRAW);
@@ -920,6 +922,14 @@ export class SakuraEffect {
 	}
 
 	/**
+	 * 设置花瓣透明度
+	 * @param value 0-1 之间的透明度值
+	 */
+	public setOpacity(value: number): void {
+		this.opacity = Math.max(0.05, Math.min(1.0, value));
+	}
+
+	/**
 	 * 将 hex 颜色字符串转换为 [r, g, b] 归一化数组
 	 */
 	private hexToRgb(hex: string): [number, number, number] {
@@ -934,12 +944,13 @@ export class SakuraEffect {
 
 	/**
 	 * 生成柔和的粉彩色（HSL 方式）
-	 * 色相随机，饱和度中低，亮度偏高 — 生成完整的 [r, g, b] 三元组
+	 * 色相随机，饱和度中低，亮度适中 — 生成完整的 [r, g, b] 三元组
+	 * 亮度控制在 0.42-0.58，确保在亮色和暗色背景下都清晰可见
 	 */
 	private generateSoftPastelColor(): [number, number, number] {
 		const hue = Math.random();
-		const saturation = 0.35 + Math.random() * 0.3;  // 0.35 - 0.65
-		const lightness = 0.48 + Math.random() * 0.24;  // 0.48 - 0.72
+		const saturation = 0.4 + Math.random() * 0.25;  // 0.4 - 0.65
+		const lightness = 0.42 + Math.random() * 0.16;  // 0.42 - 0.58
 		const a = saturation * Math.min(lightness, 1 - lightness);
 		const f = (n: number) => {
 			const k = (n + hue * 12) % 12;

@@ -86,6 +86,8 @@ export const translations: Record<Language, Translation> = {
             sakuraColorDarkDesc: 'Customize the petal color when using dark theme',
             sakuraMultiColor: 'Multi-color petals',
             sakuraMultiColorDesc: 'Each petal has a unique soft pastel color instead of a single color',
+            sakuraOpacity: 'Petal opacity',
+            sakuraOpacityDesc: 'Overall transparency of the petals (lower = more transparent)',
         }
     },
     zh: {
@@ -173,6 +175,8 @@ export const translations: Record<Language, Translation> = {
             sakuraColorDarkDesc: '暗色主题下花瓣的自定义颜色',
             sakuraMultiColor: '多彩花瓣',
             sakuraMultiColorDesc: '每片花瓣拥有独特的柔和渐变色，而非单一颜色',
+            sakuraOpacity: '花瓣透明度',
+            sakuraOpacityDesc: '花瓣整体的透明度（数值越低越透明）',
         }
     }
 };
