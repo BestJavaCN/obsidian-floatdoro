@@ -75,13 +75,13 @@ export default class PomodoroPlugin extends Plugin {
         // Register flower icon for sakura effect toggle
         addIcon('minidoro-sakura', `
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
-                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9"/>
-                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(60 12 12)"/>
-                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(120 12 12)"/>
-                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(180 12 12)"/>
-                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(240 12 12)"/>
-                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="currentColor" opacity="0.9" transform="rotate(300 12 12)"/>
+                <circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(60 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(120 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(180 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(240 12 12)"/>
+                <ellipse cx="12" cy="4.5" rx="3.5" ry="4" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(300 12 12)"/>
             </svg>
         `);
 
@@ -430,7 +430,7 @@ export default class PomodoroPlugin extends Plugin {
         
         // Ripple effect toggle button (top-left)
         this.rippleToggleBtnEl = this.backPanelEl.createEl('button', {
-            cls: 'minidoro-lock-button minidoro-effect-btn',
+            cls: 'minidoro-lock-button minidoro-effect-btn minidoro-ripple-btn',
             attr: { 'title': 'Toggle water ripple effect' }
         });
         setIcon(this.rippleToggleBtnEl, 'minidoro-ripple');
@@ -442,7 +442,7 @@ export default class PomodoroPlugin extends Plugin {
 
         // Sakura effect toggle button (top-right)
         this.sakuraToggleBtnEl = this.backPanelEl.createEl('button', {
-            cls: 'minidoro-lock-button minidoro-effect-btn',
+            cls: 'minidoro-lock-button minidoro-effect-btn minidoro-sakura-btn',
             attr: { 'title': 'Toggle sakura effect' }
         });
         setIcon(this.sakuraToggleBtnEl, 'minidoro-sakura');
@@ -454,7 +454,7 @@ export default class PomodoroPlugin extends Plugin {
 
         // Theme toggle button (bottom-left)
         this.themeToggleBtnEl = this.backPanelEl.createEl('button', {
-            cls: 'minidoro-lock-button',
+            cls: 'minidoro-lock-button minidoro-theme-btn',
             attr: { 'title': 'Toggle theme' }
         });
         this.updateThemeToggleIcon();
@@ -466,7 +466,7 @@ export default class PomodoroPlugin extends Plugin {
 
         // Lock button (bottom-right)
         const lockButton = this.backPanelEl.createEl('button', {
-            cls: 'minidoro-lock-button',
+            cls: 'minidoro-lock-button minidoro-lock-vault-btn',
             attr: { 'title': 'Lock vault' }
         });
         setIcon(lockButton, 'lock');

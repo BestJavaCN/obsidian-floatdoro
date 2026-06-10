@@ -528,6 +528,23 @@
   height: 28px;
 }
 
+/* Back panel button icon colors */
+.minidoro-ripple-btn svg {
+  color: #5b9cf9 !important;
+}
+
+.minidoro-sakura-btn svg {
+  color: #f472b6 !important;
+}
+
+.minidoro-theme-btn svg {
+  color: #a78bfa !important;
+}
+
+.minidoro-lock-vault-btn svg {
+  color: #94a3b8 !important;
+}
+
 @media (prefers-contrast: high) {
   .minidoro-progress-circle {
     stroke-width: 5;
@@ -560,6 +577,24 @@
 
 .minidoro-effect-btn.minidoro-effect-active svg {
   color: var(--minidoro-work-color) !important;
+}
+
+.minidoro-ripple-btn.minidoro-effect-active {
+  border-color: #5b9cf9 !important;
+  box-shadow: 0 0 8px rgba(91, 156, 249, 0.3) !important;
+}
+
+.minidoro-ripple-btn.minidoro-effect-active svg {
+  color: #5b9cf9 !important;
+}
+
+.minidoro-sakura-btn.minidoro-effect-active {
+  border-color: #f472b6 !important;
+  box-shadow: 0 0 8px rgba(244, 114, 182, 0.3) !important;
+}
+
+.minidoro-sakura-btn.minidoro-effect-active svg {
+  color: #f472b6 !important;
 }
 
 /* Effect canvas overlays - ensure no impact on Obsidian UI */
