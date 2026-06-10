@@ -90,6 +90,12 @@ export interface Translation {
             sakuraSettings: string;
             sakuraQuality: string;
             sakuraQualityDesc: string;
+            sakuraColorLight: string;
+            sakuraColorLightDesc: string;
+            sakuraColorDark: string;
+            sakuraColorDarkDesc: string;
+            sakuraMultiColor: string;
+            sakuraMultiColorDesc: string;
         };
 }
 
@@ -382,6 +388,9 @@ export interface PomodoroSettings {
     unlockDisableRipple: boolean;
     unlockDisableSakura: boolean;
     sakuraQuality: number;
+    sakuraColorLight: string;
+    sakuraColorDark: string;
+    sakuraMultiColor: boolean;
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {
@@ -408,4 +417,7 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     unlockDisableRipple: false,
     unlockDisableSakura: false,
     sakuraQuality: 0.5,
+    sakuraColorLight: '#E8919D',
+    sakuraColorDark: '#E8919D',
+    sakuraMultiColor: false,
 };

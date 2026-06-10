@@ -83,12 +83,14 @@ uniform vec3 uFade;
 attribute vec3 aPosition;
 attribute vec3 aEuler;
 attribute vec2 aMisc;
+attribute vec3 aColor;
 varying float palpha;
 varying float pdist;
 varying vec3 normX;
 varying vec3 normY;
 varying vec3 normZ;
 varying float distancefade;
+varying vec3 vColor;
 void main(void) {
 	vec4 pos = uModelview * vec4(aPosition + uOffset, 1.0);
 	gl_Position = uProjection * pos;
@@ -106,19 +108,20 @@ void main(void) {
 	normY = trrotm[1];
 	normZ = trrotm[2];
 	distancefade = min(1.0, exp((uFade.x - pdist) * 0.69315 / uFade.y));
+	vColor = aColor;
 }`;
 
 const SAKURA_POINT_FSH = `
 #ifdef GL_ES
 precision highp float;
 #endif
-uniform vec4 uThemeColor;
 varying float palpha;
 varying float pdist;
 varying vec3 normX;
 varying vec3 normY;
 varying vec3 normZ;
 varying float distancefade;
+varying vec3 vColor;
 float ellipse(vec2 p, vec2 o, vec2 r) {
 	vec2 lp = (p - o) / r;
 	return length(lp) - 1.0;
@@ -142,9 +145,10 @@ void main(void) {
 		r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5);
 	}
 
-	// 花瓣：中心粉色 → 光晕外缘白色透明
+	// 花瓣：中心色 → 光晕外缘带粉色调透明（避免亮色模式下出现白色边框）
 	float t = smoothstep(0.0, 0.28, r);
-	vec3 col = mix(uThemeColor.rgb, vec3(1.0), t);
+	vec3 glowColor = mix(vColor, vec3(1.0, 0.88, 0.90), 0.7);
+	vec3 col = mix(vColor, glowColor, t);
 	float alpha = (1.0 - t) * palpha * distancefade;
 	if(alpha < 0.01) discard;
 
@@ -252,6 +256,7 @@ class BlossomParticle {
 	rotation = new Array(3).fill(0);
 	position = new Array(3).fill(0);
 	euler = new Array(3).fill(0);
+	color = new Array(3).fill(0);
 	size = 1.0;
 	alpha = 1.0;
 	zkey = 0.0;
@@ -260,6 +265,7 @@ class BlossomParticle {
 	setRotation(rx: number, ry: number, rz: number) { this.rotation = [rx, ry, rz]; }
 	setPosition(nx: number, ny: number, nz: number) { this.position = [nx, ny, nz]; }
 	setEulerAngles(rx: number, ry: number, rz: number) { this.euler = [rx, ry, rz]; }
+	setColor(r: number, g: number, b: number) { this.color = [r, g, b]; }
 	setSize(s: number) { this.size = s; }
 
 	update(dt: number) {
@@ -280,6 +286,11 @@ export class SakuraEffect {
 	private animFrameId: number | null = null;
 	private active = false;
 	private quality = 0.5; // 0=低配 1=原版
+
+	// 颜色设置
+	private colorLight: [number, number, number] = [0.91, 0.57, 0.62]; // #E8919D
+	private colorDark: [number, number, number] = [0.91, 0.57, 0.62];  // #E8919D
+	private multiColor = false;
 
 	// 渲染状态
 	private renderSpec = {
@@ -512,8 +523,8 @@ export class SakuraEffect {
 		this.renderSpec.pointSize = { min: prm[0], max: prm[1] };
 
 		const prog = this.createProgram(SAKURA_POINT_VSH, SAKURA_POINT_FSH,
-			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uFade', 'uThemeColor'],
-			['aPosition', 'aEuler', 'aMisc'])!;
+			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uFade'],
+			['aPosition', 'aEuler', 'aMisc', 'aColor'])!;
 
 		this.useProgram(prog);
 		this.pointFlower.program = prog;
@@ -522,10 +533,11 @@ export class SakuraEffect {
 		const N = 300 + Math.round((1 - this.quality) * 100);  // 400@q=0 → 300@q=1
 		this.pointFlower.numFlowers = N;
 		this.pointFlower.particles = new Array(N);
-		this.pointFlower.dataArray = new Float32Array(N * 8);
+		this.pointFlower.dataArray = new Float32Array(N * 11);  // pos(3) + euler(3) + misc(2) + color(3)
 		this.pointFlower.positionArrayOffset = 0;
 		this.pointFlower.eulerArrayOffset = N * 3;
 		this.pointFlower.miscArrayOffset = N * 6;
+		this.pointFlower.colorArrayOffset = N * 8;
 		this.pointFlower.buffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.pointFlower.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, this.pointFlower.dataArray, gl.DYNAMIC_DRAW);
@@ -548,6 +560,9 @@ export class SakuraEffect {
 		const tmpv3 = Vec3.create(0, 0, 0);
 		const symmetryrand = () => Math.random() * 2 - 1;
 
+		const isDark = document.body.classList.contains('theme-dark');
+		const baseColor = isDark ? this.colorDark : this.colorLight;
+
 		for (let i = 0; i < this.pointFlower.numFlowers; i++) {
 			const p = this.pointFlower.particles[i];
 			tmpv3.x = symmetryrand() * 0.3 - 0.8;
@@ -564,6 +579,14 @@ export class SakuraEffect {
 			);
 			p.setEulerAngles(Math.random() * PI2, Math.random() * PI2, Math.random() * PI2);
 			p.setSize(0.9 + Math.random() * 0.1);
+
+			// 为每片花瓣分配颜色
+			if (this.multiColor) {
+				const pastelColor = this.generateSoftPastelColor();
+				p.setColor(pastelColor[0], pastelColor[1], pastelColor[2]);
+			} else {
+				p.setColor(baseColor[0], baseColor[1], baseColor[2]);
+			}
 		}
 	}
 
@@ -596,6 +619,7 @@ export class SakuraEffect {
 		let ipos = pf.positionArrayOffset;
 		let ieuler = pf.eulerArrayOffset;
 		let imisc = pf.miscArrayOffset;
+		let icolor = pf.colorArrayOffset;
 		for (let i = 0; i < pf.numFlowers; i++) {
 			const p = pf.particles[i];
 			pf.dataArray[ipos] = p.position[0];
@@ -609,6 +633,10 @@ export class SakuraEffect {
 			pf.dataArray[imisc] = p.size;
 			pf.dataArray[imisc + 1] = p.alpha;
 			imisc += 2;
+			pf.dataArray[icolor] = p.color[0];
+			pf.dataArray[icolor + 1] = p.color[1];
+			pf.dataArray[icolor + 2] = p.color[2];
+			icolor += 3;
 		}
 
 		gl.enable(gl.BLEND);
@@ -621,18 +649,13 @@ export class SakuraEffect {
 		gl.uniform3fv(prog.uniforms.uResolution, this.renderSpec.array);
 		gl.uniform3fv(prog.uniforms.uFade, Vec3.arrayForm(pf.fader));
 
-		const isDark = document.body.classList.contains('theme-dark');
-		gl.uniform4f(prog.uniforms.uThemeColor,
-			isDark ? 0.85 : 0.82, isDark ? 0.45 : 0.28, isDark ? 0.48 : 0.36,  // center pink
-			isDark ? 0.0 : 0.0   // unused
-		);
-
 		gl.bindBuffer(gl.ARRAY_BUFFER, pf.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, pf.dataArray, gl.DYNAMIC_DRAW);
 		const F32 = Float32Array.BYTES_PER_ELEMENT;
 		gl.vertexAttribPointer(prog.attributes.aPosition, 3, gl.FLOAT, false, 0, pf.positionArrayOffset * F32);
 		gl.vertexAttribPointer(prog.attributes.aEuler, 3, gl.FLOAT, false, 0, pf.eulerArrayOffset * F32);
 		gl.vertexAttribPointer(prog.attributes.aMisc, 2, gl.FLOAT, false, 0, pf.miscArrayOffset * F32);
+		gl.vertexAttribPointer(prog.attributes.aColor, 3, gl.FLOAT, false, 0, pf.colorArrayOffset * F32);
 
 		// 根据品质在远处 z 层重复绘制，产生远近层次感
 		// 品质 < 0.25：仅近层；0.25+：近层 + 4角远层（始终全深度）
@@ -861,5 +884,51 @@ export class SakuraEffect {
 	 */
 	public isActive(): boolean {
 		return this.active;
+	}
+
+	/**
+	 * 设置花瓣颜色
+	 * @param lightColor CSS 颜色字符串，亮色模式
+	 * @param darkColor CSS 颜色字符串，暗色模式
+	 */
+	public setColors(lightColor: string, darkColor: string): void {
+		this.colorLight = this.hexToRgb(lightColor);
+		this.colorDark = this.hexToRgb(darkColor);
+	}
+
+	/**
+	 * 设置多彩花瓣开关
+	 */
+	public setMultiColor(enabled: boolean): void {
+		this.multiColor = enabled;
+	}
+
+	/**
+	 * 将 hex 颜色字符串转换为 [r, g, b] 归一化数组
+	 */
+	private hexToRgb(hex: string): [number, number, number] {
+		const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+		if (!result) return [0.91, 0.57, 0.62]; // 默认 #E8919D
+		return [
+			parseInt(result[1], 16) / 255,
+			parseInt(result[2], 16) / 255,
+			parseInt(result[3], 16) / 255,
+		];
+	}
+
+	/**
+	 * 生成柔和的粉彩色（HSL 方式）
+	 * 色相随机，饱和度中低，亮度偏高 — 生成完整的 [r, g, b] 三元组
+	 */
+	private generateSoftPastelColor(): [number, number, number] {
+		const hue = Math.random();
+		const saturation = 0.35 + Math.random() * 0.3;  // 0.35 - 0.65
+		const lightness = 0.48 + Math.random() * 0.24;  // 0.48 - 0.72
+		const a = saturation * Math.min(lightness, 1 - lightness);
+		const f = (n: number) => {
+			const k = (n + hue * 12) % 12;
+			return lightness - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+		};
+		return [f(0), f(8), f(4)];
 	}
 }

@@ -179,6 +179,8 @@ export default class PomodoroPlugin extends Plugin {
         this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
         this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
         this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
+        this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
+        this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
     }
     
     private updatePanelSize() {
@@ -535,6 +537,8 @@ export default class PomodoroPlugin extends Plugin {
             this.sakuraToggleBtnEl?.removeClass('minidoro-effect-active');
         } else {
             this.sakuraEffect.setQuality(this.settings.sakuraQuality);
+            this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
+            this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
             this.sakuraEffect.start();
             this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
         }
@@ -754,6 +758,8 @@ export default class PomodoroPlugin extends Plugin {
         }
         if (this.settings.lockEnableSakura && !this.sakuraEffect.isActive()) {
             this.sakuraEffect.setQuality(this.settings.sakuraQuality);
+            this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
+            this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
             this.sakuraEffect.start();
             this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
         }
@@ -1596,6 +1602,36 @@ class PomodoroSettingTab extends PluginSettingTab {
                 .setDynamicTooltip()
                 .onChange(async (value) => {
                     this.plugin.settings.sakuraQuality = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.sakuraColorLight)
+            .setDesc(settingsTrans.sakuraColorLightDesc)
+            .addColorPicker(picker => picker
+                .setValue(this.plugin.settings.sakuraColorLight)
+                .onChange(async (value) => {
+                    this.plugin.settings.sakuraColorLight = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.sakuraColorDark)
+            .setDesc(settingsTrans.sakuraColorDarkDesc)
+            .addColorPicker(picker => picker
+                .setValue(this.plugin.settings.sakuraColorDark)
+                .onChange(async (value) => {
+                    this.plugin.settings.sakuraColorDark = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.sakuraMultiColor)
+            .setDesc(settingsTrans.sakuraMultiColorDesc)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.sakuraMultiColor)
+                .onChange(async (value) => {
+                    this.plugin.settings.sakuraMultiColor = value;
                     await this.plugin.saveSettings();
                 }));
 

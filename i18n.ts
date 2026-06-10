@@ -80,6 +80,12 @@ export const translations: Record<Language, Translation> = {
             sakuraSettings: 'Sakura Settings',
             sakuraQuality: 'Rendering quality',
             sakuraQualityDesc: 'Higher quality = smoother but more GPU usage',
+            sakuraColorLight: 'Petal color (light mode)',
+            sakuraColorLightDesc: 'Customize the petal color when using light theme',
+            sakuraColorDark: 'Petal color (dark mode)',
+            sakuraColorDarkDesc: 'Customize the petal color when using dark theme',
+            sakuraMultiColor: 'Multi-color petals',
+            sakuraMultiColorDesc: 'Each petal has a unique soft pastel color instead of a single color',
         }
     },
     zh: {
@@ -161,6 +167,12 @@ export const translations: Record<Language, Translation> = {
             sakuraSettings: '樱花效果设置',
             sakuraQuality: '渲染精细度',
             sakuraQualityDesc: '数值越高画面越精细，但 GPU 占用也越高',
+            sakuraColorLight: '花瓣颜色（亮色模式）',
+            sakuraColorLightDesc: '亮色主题下花瓣的自定义颜色',
+            sakuraColorDark: '花瓣颜色（暗色模式）',
+            sakuraColorDarkDesc: '暗色主题下花瓣的自定义颜色',
+            sakuraMultiColor: '多彩花瓣',
+            sakuraMultiColorDesc: '每片花瓣拥有独特的柔和渐变色，而非单一颜色',
         }
     }
 };
