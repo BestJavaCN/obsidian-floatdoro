@@ -79,29 +79,20 @@ uniform mat4 uProjection;
 uniform mat4 uModelview;
 uniform vec3 uResolution;
 uniform vec3 uOffset;
-uniform vec3 uDOF;
 uniform vec3 uFade;
 attribute vec3 aPosition;
 attribute vec3 aEuler;
 attribute vec2 aMisc;
-varying vec3 pposition;
-varying float psize;
 varying float palpha;
 varying float pdist;
 varying vec3 normX;
 varying vec3 normY;
 varying vec3 normZ;
-varying vec3 normal;
-varying float diffuse;
-varying float specular;
-varying float rstop;
 varying float distancefade;
 void main(void) {
 	vec4 pos = uModelview * vec4(aPosition + uOffset, 1.0);
 	gl_Position = uProjection * pos;
 	gl_PointSize = aMisc.x * uProjection[1][1] / -pos.z * uResolution.y * 0.5;
-	pposition = pos.xyz;
-	psize = aMisc.x;
 	pdist = length(pos.xyz);
 	palpha = smoothstep(0.0, 1.0, (pdist - 0.1) / uFade.z);
 	vec3 elrsn = sin(aEuler);
@@ -110,22 +101,10 @@ void main(void) {
 	mat3 roty = mat3(elrcs.y,0.0,-elrsn.y, 0.0,1.0,0.0, elrsn.y,0.0,elrcs.y);
 	mat3 rotz = mat3(elrcs.z,elrsn.z,0.0, -elrsn.z,elrcs.z,0.0, 0.0,0.0,1.0);
 	mat3 rotmat = rotx * roty * rotz;
-	normal = rotmat[2];
 	mat3 trrotm = mat3(rotmat[0][0],rotmat[1][0],rotmat[2][0], rotmat[0][1],rotmat[1][1],rotmat[2][1], rotmat[0][2],rotmat[1][2],rotmat[2][2]);
 	normX = trrotm[0];
 	normY = trrotm[1];
 	normZ = trrotm[2];
-	const vec3 lit = vec3(0.6917144638660746, 0.6917144638660746, -0.20751433915982237);
-	float tmpdfs = dot(lit, normal);
-	if(tmpdfs < 0.0) { normal = -normal; tmpdfs = dot(lit, normal); }
-	diffuse = 0.4 + tmpdfs;
-	vec3 eyev = normalize(-pos.xyz);
-	if(dot(eyev, normal) > 0.0) {
-		vec3 hv = normalize(eyev + lit);
-		specular = pow(max(dot(hv, normal), 0.0), 20.0);
-	} else { specular = 0.0; }
-	rstop = clamp((abs(pdist - uDOF.x) - uDOF.y) / uDOF.z, 0.0, 1.0);
-	rstop = pow(rstop, 0.5);
 	distancefade = min(1.0, exp((uFade.x - pdist) * 0.69315 / uFade.y));
 }`;
 
@@ -133,21 +112,12 @@ const SAKURA_POINT_FSH = `
 #ifdef GL_ES
 precision highp float;
 #endif
-uniform vec3 uDOF;
-uniform vec3 uFade;
-const vec3 fadeCol = vec3(0.08, 0.03, 0.06);
 uniform vec4 uThemeColor;
-varying vec3 pposition;
-varying float psize;
 varying float palpha;
 varying float pdist;
 varying vec3 normX;
 varying vec3 normY;
 varying vec3 normZ;
-varying vec3 normal;
-varying float diffuse;
-varying float specular;
-varying float rstop;
 varying float distancefade;
 float ellipse(vec2 p, vec2 o, vec2 r) {
 	vec2 lp = (p - o) / r;
@@ -166,38 +136,18 @@ void main(void) {
 	mat2 flwrm = mat2(flwrcs, -flwrsn, flwrsn, flwrcs);
 	vec2 flwrp = vec2(abs(coord.x), coord.y) * flwrm;
 	float r;
-	float r_glow;
 	if(flwrp.x < 0.0) {
 		r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.36, 0.96) * 0.5);
-		r_glow = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.36, 0.96) * 0.5 * 2.0);
 	} else {
 		r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5);
-		r_glow = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5 * 2.0);
 	}
-	if(r_glow > 0.0) discard;
 
-	// 预先计算花瓣基础色（光晕区也共用）
-	vec3 petalCol = mix(vec3(1.0, 0.9, 0.75), vec3(1.0, 0.9, 0.87), r);
-	float grady = mix(0.0, 1.0, pow(coord.y * 0.5 + 0.5, 0.35));
-	petalCol *= vec3(1.0, grady, grady);
-	petalCol *= mix(0.9, 1.0, pow(abs(coord.x), 1.0));
-	petalCol = petalCol * diffuse + specular;
-	petalCol = mix(fadeCol, petalCol, distancefade);
+	// 花瓣：中心粉色 → 光晕外缘白色透明
+	float t = smoothstep(0.0, 0.28, r);
+	vec3 col = mix(uThemeColor.rgb, vec3(1.0), t);
+	float alpha = (1.0 - t) * palpha * distancefade;
+	if(alpha < 0.01) discard;
 
-	vec3 col;
-	float alpha;
-
-	if(r > rstop) {
-		// 光晕区：从花瓣色渐变到光晕色
-		float t = clamp((-r_glow) / 0.55, 0.0, 1.0);
-		col = mix(petalCol * 0.4, uThemeColor.rgb, t);
-		alpha = (1.0 - t * 0.85) * palpha * distancefade;
-	} else {
-		// 花瓣本体
-		col = petalCol * uThemeColor.a;
-		float edgeAlpha = (rstop > 0.001)? (0.5 - r / (rstop * 2.0)) : 1.0;
-		alpha = smoothstep(0.0, 1.0, edgeAlpha) * palpha;
-	}
 	gl_FragColor = vec4(col, alpha);
 }`;
 
@@ -562,7 +512,7 @@ export class SakuraEffect {
 		this.renderSpec.pointSize = { min: prm[0], max: prm[1] };
 
 		const prog = this.createProgram(SAKURA_POINT_VSH, SAKURA_POINT_FSH,
-			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uDOF', 'uFade', 'uThemeColor'],
+			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uFade', 'uThemeColor'],
 			['aPosition', 'aEuler', 'aMisc'])!;
 
 		this.useProgram(prog);
@@ -669,13 +619,12 @@ export class SakuraEffect {
 		gl.uniformMatrix4fv(prog.uniforms.uProjection, false, this.projection.matrix);
 		gl.uniformMatrix4fv(prog.uniforms.uModelview, false, this.camera.matrix);
 		gl.uniform3fv(prog.uniforms.uResolution, this.renderSpec.array);
-		gl.uniform3fv(prog.uniforms.uDOF, Vec3.arrayForm(this.camera.dof));
 		gl.uniform3fv(prog.uniforms.uFade, Vec3.arrayForm(pf.fader));
 
 		const isDark = document.body.classList.contains('theme-dark');
 		gl.uniform4f(prog.uniforms.uThemeColor,
-			isDark ? 0.03 : 0.012, isDark ? 0.015 : 0.005, isDark ? 0.06 : 0.03,  // glow RGB
-			isDark ? 0.8 : 1.8   // brightness
+			isDark ? 0.85 : 0.82, isDark ? 0.45 : 0.28, isDark ? 0.48 : 0.36,  // center pink
+			isDark ? 0.0 : 0.0   // unused
 		);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, pf.buffer);
