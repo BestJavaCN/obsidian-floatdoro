@@ -229,68 +229,71 @@ export class RippleEffect {
 	//  亮色 alpha 值需高于暗色，因为白色背景需要更强不透明度才能可见。
 
 	private readonly DARK_PRESETS: Record<string, RipplePreset> = {
-		'classic-blue': {  // 经典蓝白（原暗色默认，alpha 提升至可见）
-			waterR: 180, waterG: 210, waterB: 240,
+		//  暗色模式：可见性主要靠 specular（白亮斑在暗底上），hAlpha 提高让水色也参与显色。
+		'classic-blue': {  // 经典蓝白 — 纯白高光 + 淡蓝底
+			waterR: 170, waterG: 200, waterB: 245,
 			specR: 255, specG: 255, specB: 255,
-			waterColorScale: 4, specAlpha: 0.60, heightAlpha: 0.12, canvasOpacity: 0.55,
+			waterColorScale: 4, specAlpha: 0.70, heightAlpha: 0.25, canvasOpacity: 0.65,
 		},
-		'crystal': {  // 水晶清透 — 淡蓝底 + 纯白高光
-			waterR: 200, waterG: 225, waterB: 248,
+		'crystal': {  // 水晶清透 — 纯白高光 + 清透蓝底
+			waterR: 185, waterG: 215, waterB: 250,
 			specR: 255, specG: 255, specB: 255,
-			waterColorScale: 3, specAlpha: 0.65, heightAlpha: 0.12, canvasOpacity: 0.55,
+			waterColorScale: 3, specAlpha: 0.72, heightAlpha: 0.25, canvasOpacity: 0.65,
 		},
-		'pearl': {  // 珍珠虹彩 — 紫底 + 暖白高光
-			waterR: 220, waterG: 210, waterB: 245,
+		'pearl': {  // 珍珠虹彩 — 暖白高光 + 紫底
+			waterR: 215, waterG: 195, waterB: 250,
 			specR: 255, specG: 252, specB: 235,
-			waterColorScale: 4, specAlpha: 0.60, heightAlpha: 0.12, canvasOpacity: 0.55,
+			waterColorScale: 4, specAlpha: 0.70, heightAlpha: 0.25, canvasOpacity: 0.65,
 		},
-		'sunrise': {  // 旭日暖金 — 琥珀底 + 暖金高光
-			waterR: 210, waterG: 190, waterB: 155,
-			specR: 255, specG: 248, specB: 200,
-			waterColorScale: 5, specAlpha: 0.65, heightAlpha: 0.14, canvasOpacity: 0.55,
+		'sunrise': {  // 旭日暖金 — 暖金高光 + 琥珀底
+			waterR: 210, waterG: 180, waterB: 135,
+			specR: 255, specG: 248, specB: 195,
+			waterColorScale: 6, specAlpha: 0.72, heightAlpha: 0.28, canvasOpacity: 0.65,
 		},
-		'aurora': {  // 极光彩 — 蓝底 + 粉紫高光
-			waterR: 190, waterG: 215, waterB: 252,
-			specR: 255, specG: 220, specB: 255,
-			waterColorScale: 4, specAlpha: 0.62, heightAlpha: 0.12, canvasOpacity: 0.55,
+		'aurora': {  // 极光彩 — 粉紫高光 + 深蓝底
+			waterR: 170, waterG: 200, waterB: 255,
+			specR: 255, specG: 210, specB: 255,
+			waterColorScale: 4, specAlpha: 0.70, heightAlpha: 0.25, canvasOpacity: 0.65,
 		},
-		'pure-white': {  // 纯白 — 极淡蓝底 + 纯白高光，最干净
-			waterR: 210, waterG: 225, waterB: 245,
+		'pure-white': {  // 纯白 — 纯白高光，最干净
+			waterR: 195, waterG: 210, waterB: 240,
 			specR: 255, specG: 255, specB: 255,
-			waterColorScale: 2, specAlpha: 0.70, heightAlpha: 0.12, canvasOpacity: 0.55,
+			waterColorScale: 2, specAlpha: 0.75, heightAlpha: 0.25, canvasOpacity: 0.65,
 		},
 	};
 
 	private readonly LIGHT_PRESETS: Record<string, RipplePreset> = {
-		'warm-gold': {  // 暖金 — 极淡底 + 暖黄高光
-			waterR: 248, waterG: 245, waterB: 240,
-			specR: 255, specG: 248, specB: 200,
-			waterColorScale: 4, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		//  亮色模式：可见性主要靠 waterColor 与白底的色差 + 高 alpha。
+		//  waterColor 需要在 200~240 区间才能与白底形成有效对比。
+		'warm-gold': {  // 暖金 — 金黄底 + 暖黄高光（与白底色差 20~55）
+			waterR: 235, waterG: 230, waterB: 200,
+			specR: 255, specG: 245, specB: 195,
+			waterColorScale: 5, specAlpha: 0.80, heightAlpha: 0.80, canvasOpacity: 0.85,
 		},
-		'crystal': {  // 水晶清透 — 淡蓝底 + 纯白高光
-			waterR: 235, waterG: 242, waterB: 252,
-			specR: 255, specG: 255, specB: 255,
-			waterColorScale: 5, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		'crystal': {  // 水晶清透 — 淡蓝底 + 纯白高光（与白底色差 3~35）
+			waterR: 220, waterG: 235, waterB: 252,
+			specR: 255, specG: 255, specB: 252,
+			waterColorScale: 6, specAlpha: 0.80, heightAlpha: 0.80, canvasOpacity: 0.85,
 		},
-		'pearl': {  // 珍珠虹彩 — 粉底 + 暖黄高光
-			waterR: 250, waterG: 238, waterB: 250,
-			specR: 255, specG: 252, specB: 225,
-			waterColorScale: 4, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		'pearl': {  // 珍珠虹彩 — 粉紫底 + 暖白高光（与白底色差 5~30）
+			waterR: 242, waterG: 225, waterB: 250,
+			specR: 255, specG: 252, specB: 220,
+			waterColorScale: 5, specAlpha: 0.80, heightAlpha: 0.80, canvasOpacity: 0.85,
 		},
-		'sunrise': {  // 旭日暖金 — 浓金底 + 暖白高光
-			waterR: 252, waterG: 230, waterB: 200,
-			specR: 255, specG: 255, specB: 230,
-			waterColorScale: 8, specAlpha: 0.65, heightAlpha: 0.50, canvasOpacity: 0.85,
+		'sunrise': {  // 旭日暖金 — 浓金底 + 暖白高光（与白底色差 10~80，最显眼）
+			waterR: 245, waterG: 215, waterB: 175,
+			specR: 255, specG: 255, specB: 225,
+			waterColorScale: 8, specAlpha: 0.80, heightAlpha: 0.80, canvasOpacity: 0.85,
 		},
-		'refraction': {  // 偏光折射 — 蓝底 + 暖黄高光，冷暖对比最强
-			waterR: 225, waterG: 238, waterB: 255,
-			specR: 255, specG: 240, specB: 200,
-			waterColorScale: 6, specAlpha: 0.70, heightAlpha: 0.50, canvasOpacity: 0.85,
+		'refraction': {  // 偏光折射 — 蓝底 + 暖黄高光（与白底色差 0~40，冷暖对比）
+			waterR: 215, waterG: 235, waterB: 255,
+			specR: 255, specG: 235, specB: 195,
+			waterColorScale: 6, specAlpha: 0.82, heightAlpha: 0.80, canvasOpacity: 0.85,
 		},
-		'dawn': {  // 晨曦微光 — 暖底 + 粉金高光
-			waterR: 252, waterG: 240, waterB: 230,
-			specR: 255, specG: 240, specB: 210,
-			waterColorScale: 3, specAlpha: 0.55, heightAlpha: 0.40, canvasOpacity: 0.80,
+		'dawn': {  // 晨曦微光 — 暖底 + 粉金高光（与白底色差 10~35，最柔和）
+			waterR: 245, waterG: 232, waterB: 220,
+			specR: 255, specG: 238, specB: 205,
+			waterColorScale: 4, specAlpha: 0.70, heightAlpha: 0.70, canvasOpacity: 0.85,
 		},
 	};
 
