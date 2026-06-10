@@ -77,6 +77,9 @@ export const translations: Record<Language, Translation> = {
             unlockDisableRippleDesc: 'Automatically disable water ripple effect when vault is unlocked',
             unlockDisableSakura: 'Auto-disable sakura on unlock',
             unlockDisableSakuraDesc: 'Automatically disable sakura effect when vault is unlocked',
+            sakuraSettings: 'Sakura Settings',
+            sakuraQuality: 'Rendering quality',
+            sakuraQualityDesc: 'Higher quality = smoother but more GPU usage',
         }
     },
     zh: {
@@ -155,6 +158,9 @@ export const translations: Record<Language, Translation> = {
             unlockDisableRippleDesc: '仓库解锁时自动关闭水波纹效果',
             unlockDisableSakura: '解锁后自动关闭樱花效果',
             unlockDisableSakuraDesc: '仓库解锁时自动关闭樱花效果',
+            sakuraSettings: '樱花效果设置',
+            sakuraQuality: '渲染精细度',
+            sakuraQualityDesc: '数值越高画面越精细，但 GPU 占用也越高',
         }
     }
 };

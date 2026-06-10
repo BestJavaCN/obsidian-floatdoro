@@ -329,6 +329,7 @@ export class SakuraEffect {
 	private gl: WebGLRenderingContext | null = null;
 	private animFrameId: number | null = null;
 	private active = false;
+	private quality = 0.5; // 0=低配 1=原版
 
 	// 渲染状态
 	private renderSpec = {
@@ -568,19 +569,20 @@ export class SakuraEffect {
 		this.pointFlower.program = prog;
 		this.pointFlower.offset = new Float32Array([0, 0, 0]);
 		this.pointFlower.fader = Vec3.create(0, 10, 0);
-		this.pointFlower.numFlowers = 300;
-		this.pointFlower.particles = new Array(300);
-		this.pointFlower.dataArray = new Float32Array(300 * 8);
+		const N = 300 + Math.round((1 - this.quality) * 100);  // 400@q=0 → 300@q=1
+		this.pointFlower.numFlowers = N;
+		this.pointFlower.particles = new Array(N);
+		this.pointFlower.dataArray = new Float32Array(N * 8);
 		this.pointFlower.positionArrayOffset = 0;
-		this.pointFlower.eulerArrayOffset = 300 * 3;
-		this.pointFlower.miscArrayOffset = 300 * 6;
+		this.pointFlower.eulerArrayOffset = N * 3;
+		this.pointFlower.miscArrayOffset = N * 6;
 		this.pointFlower.buffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.pointFlower.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, this.pointFlower.dataArray, gl.DYNAMIC_DRAW);
 		gl.bindBuffer(gl.ARRAY_BUFFER, null);
 		this.unuseProgram(prog);
 
-		for (let i = 0; i < 300; i++) {
+		for (let i = 0; i < this.pointFlower.numFlowers; i++) {
 			this.pointFlower.particles[i] = new BlossomParticle();
 		}
 	}
@@ -683,9 +685,10 @@ export class SakuraEffect {
 		gl.vertexAttribPointer(prog.attributes.aEuler, 3, gl.FLOAT, false, 0, pf.eulerArrayOffset * F32);
 		gl.vertexAttribPointer(prog.attributes.aMisc, 2, gl.FLOAT, false, 0, pf.miscArrayOffset * F32);
 
-		// 9个实例 (3x3 网格)
-		for (let i = 1; i < 2; i++) {
-			const zpos = i * -2;
+		// 根据品质在远处 z 层重复绘制，产生远近层次感
+		// 品质 < 0.25：仅近层；0.25+：近层 + 4角远层（始终全深度）
+		if (this.quality >= 0.25) {
+			const zpos = -2.0;
 			const offsets: [number, number][] = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
 			for (const [sx, sy] of offsets) {
 				pf.offset[0] = pf.area.x * sx;
@@ -695,6 +698,7 @@ export class SakuraEffect {
 				gl.drawArrays(gl.POINTS, 0, pf.numFlowers);
 			}
 		}
+		// 近层主体
 		pf.offset[0] = 0; pf.offset[1] = 0; pf.offset[2] = 0;
 		gl.uniform3fv(prog.uniforms.uOffset, pf.offset);
 		gl.drawArrays(gl.POINTS, 0, pf.numFlowers);
@@ -725,8 +729,9 @@ export class SakuraEffect {
 		this.drawEffect(this.effectLib.mkBrightBuf);
 		this.unuseEffect(this.effectLib.mkBrightBuf);
 
-		// Directional blur (2 passes)
-		for (let i = 0; i < 2; i++) {
+		// Directional blur：1 pass @ q=0 → 2 passes @ q=1
+		const bloomPasses = 1 + Math.round(this.quality);
+		for (let i = 0; i < bloomPasses; i++) {
 			const p = 1.5 + i;
 			const s = 2.0 + i;
 			bindRT(this.renderSpec.wHalfRT1!, true);
@@ -797,8 +802,9 @@ export class SakuraEffect {
 		const d = document.documentElement;
 		const fullw = Math.max(b.clientWidth, b.scrollWidth, d.scrollWidth, d.clientWidth);
 		const fullh = Math.max(b.clientHeight, b.scrollHeight, d.scrollHeight, d.clientHeight);
-		this.canvas.width = fullw;
-		this.canvas.height = fullh;
+		const s = 0.5 + this.quality * 0.5;  // 0.5~1.0
+		this.canvas.width = Math.floor(fullw * s);
+		this.canvas.height = Math.floor(fullh * s);
 	}
 
 	private animate = () => {
@@ -830,6 +836,7 @@ export class SakuraEffect {
 			height: 100%;
 			pointer-events: none;
 			z-index: 0;
+			image-rendering: auto;
 		`;
 		document.body.appendChild(this.canvas);
 
@@ -891,6 +898,13 @@ export class SakuraEffect {
 		this.gl = null;
 		this.sceneStandBy = false;
 		this.effectLib = {};
+	}
+
+	/**
+	 * 设置渲染精细度：0=低GPU占用，1=原版画质
+	 */
+	public setQuality(q: number): void {
+		this.quality = Math.max(0, Math.min(1, q));
 	}
 
 	/**

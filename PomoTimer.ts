@@ -87,6 +87,9 @@ export interface Translation {
             unlockDisableRippleDesc: string;
             unlockDisableSakura: string;
             unlockDisableSakuraDesc: string;
+            sakuraSettings: string;
+            sakuraQuality: string;
+            sakuraQualityDesc: string;
         };
 }
 
@@ -378,6 +381,7 @@ export interface PomodoroSettings {
     lockEnableSakura: boolean;
     unlockDisableRipple: boolean;
     unlockDisableSakura: boolean;
+    sakuraQuality: number;
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {
@@ -403,4 +407,5 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     lockEnableSakura: false,
     unlockDisableRipple: false,
     unlockDisableSakura: false,
+    sakuraQuality: 0.5,
 };

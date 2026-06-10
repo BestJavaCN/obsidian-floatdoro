@@ -534,6 +534,7 @@ export default class PomodoroPlugin extends Plugin {
             this.sakuraEffect.stop();
             this.sakuraToggleBtnEl?.removeClass('minidoro-effect-active');
         } else {
+            this.sakuraEffect.setQuality(this.settings.sakuraQuality);
             this.sakuraEffect.start();
             this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
         }
@@ -752,6 +753,7 @@ export default class PomodoroPlugin extends Plugin {
             this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
         }
         if (this.settings.lockEnableSakura && !this.sakuraEffect.isActive()) {
+            this.sakuraEffect.setQuality(this.settings.sakuraQuality);
             this.sakuraEffect.start();
             this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
         }
@@ -1578,6 +1580,22 @@ class PomodoroSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.unlockDisableSakura)
                 .onChange(async (value) => {
                     this.plugin.settings.unlockDisableSakura = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName(settingsTrans.sakuraSettings)
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName(settingsTrans.sakuraQuality)
+            .setDesc(settingsTrans.sakuraQualityDesc)
+            .addSlider(slider => slider
+                .setLimits(0, 1, 0.05)
+                .setValue(this.plugin.settings.sakuraQuality)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                    this.plugin.settings.sakuraQuality = value;
                     await this.plugin.saveSettings();
                 }));
 
