@@ -170,10 +170,11 @@ void main(void) {
 	if(r > rstop) discard;
 
 	// 花瓣内部颜色渐变 & 光照
+	// diffuse 产生朝向明暗变化；specular 带花色 tint 避免纯白高光
 	float grady = mix(0.45, 0.85, pow(coord.y * 0.5 + 0.5, 0.35));
 	float edgex = mix(0.75, 1.0, pow(abs(coord.x), 1.0));
 	vec3 col = vColor * grady * edgex;
-	col = col * diffuse + specular;
+	col = col * diffuse + vColor * specular * 0.35;
 
 	// DOF 边缘柔化
 	float alpha = (rstop > 0.001) ? (0.5 - r / (rstop * 2.0)) : 1.0;
