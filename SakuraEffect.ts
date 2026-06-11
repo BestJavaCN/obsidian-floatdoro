@@ -77,6 +77,7 @@ uniform mat4 uProjection;
 uniform mat4 uModelview;
 uniform vec3 uResolution;
 uniform vec3 uOffset;
+uniform vec3 uDOF;
 uniform vec3 uFade;
 attribute vec3 aPosition;
 attribute vec3 aEuler;
@@ -87,6 +88,9 @@ varying float pdist;
 varying vec3 normX;
 varying vec3 normY;
 varying vec3 normZ;
+varying float diffuse;
+varying float specular;
+varying float rstop;
 varying float distancefade;
 varying vec3 vColor;
 void main(void) {
@@ -101,10 +105,27 @@ void main(void) {
 	mat3 roty = mat3(elrcs.y,0.0,-elrsn.y, 0.0,1.0,0.0, elrsn.y,0.0,elrcs.y);
 	mat3 rotz = mat3(elrcs.z,elrsn.z,0.0, -elrsn.z,elrcs.z,0.0, 0.0,0.0,1.0);
 	mat3 rotmat = rotx * roty * rotz;
+	vec3 normal = rotmat[2];
 	mat3 trrotm = mat3(rotmat[0][0],rotmat[1][0],rotmat[2][0], rotmat[0][1],rotmat[1][1],rotmat[2][1], rotmat[0][2],rotmat[1][2],rotmat[2][2]);
 	normX = trrotm[0];
 	normY = trrotm[1];
 	normZ = trrotm[2];
+	const vec3 lit = vec3(0.6917144638660746, 0.6917144638660746, -0.20751433915982237);
+	float tmpdfs = dot(lit, normal);
+	if(tmpdfs < 0.0) {
+		normal = -normal;
+		tmpdfs = dot(lit, normal);
+	}
+	diffuse = 0.4 + tmpdfs;
+	vec3 eyev = normalize(-pos.xyz);
+	if(dot(eyev, normal) > 0.0) {
+		vec3 hv = normalize(eyev + lit);
+		specular = pow(max(dot(hv, normal), 0.0), 20.0);
+	} else {
+		specular = 0.0;
+	}
+	rstop = clamp((abs(pdist - uDOF.x) - uDOF.y) / uDOF.z, 0.0, 1.0);
+	rstop = pow(rstop, 0.5);
 	distancefade = min(1.0, exp((uFade.x - pdist) * 0.69315 / uFade.y));
 	vColor = aColor;
 }`;
@@ -119,6 +140,9 @@ varying float pdist;
 varying vec3 normX;
 varying vec3 normY;
 varying vec3 normZ;
+varying float diffuse;
+varying float specular;
+varying float rstop;
 varying float distancefade;
 varying vec3 vColor;
 float ellipse(vec2 p, vec2 o, vec2 r) {
@@ -143,11 +167,17 @@ void main(void) {
 	} else {
 		r = ellipse(flwrp, vec2(0.065, 0.024) * 0.5, vec2(0.58, 0.96) * 0.5);
 	}
+	if(r > rstop) discard;
 
-	// 花瓣：保持纯正颜色，边缘柔滑淡出；光晕由 bloom 后处理自然产生
-	float t = smoothstep(-0.15, 0.45, r);
-	vec3 col = vColor;
-	float alpha = (1.0 - t) * palpha * distancefade * uOpacity;
+	// 花瓣内部颜色渐变 & 光照
+	float grady = mix(0.45, 0.85, pow(coord.y * 0.5 + 0.5, 0.35));
+	float edgex = mix(0.75, 1.0, pow(abs(coord.x), 1.0));
+	vec3 col = vColor * grady * edgex;
+	col = col * diffuse + specular;
+
+	// DOF 边缘柔化
+	float alpha = (rstop > 0.001) ? (0.5 - r / (rstop * 2.0)) : 1.0;
+	alpha = smoothstep(0.0, 1.0, alpha) * palpha * distancefade * uOpacity;
 	if(alpha < 0.01) discard;
 
 	gl_FragColor = vec4(col, alpha);
@@ -530,7 +560,7 @@ export class SakuraEffect {
 		this.renderSpec.pointSize = { min: prm[0], max: prm[1] };
 
 		const prog = this.createProgram(SAKURA_POINT_VSH, SAKURA_POINT_FSH,
-			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uFade', 'uOpacity'],
+			['uProjection', 'uModelview', 'uResolution', 'uOffset', 'uDOF', 'uFade', 'uOpacity'],
 			['aPosition', 'aEuler', 'aMisc', 'aColor'])!;
 
 		this.useProgram(prog);
@@ -660,6 +690,7 @@ export class SakuraEffect {
 		gl.uniformMatrix4fv(prog.uniforms.uProjection, false, this.projection.matrix);
 		gl.uniformMatrix4fv(prog.uniforms.uModelview, false, this.camera.matrix);
 		gl.uniform3fv(prog.uniforms.uResolution, this.renderSpec.array);
+		gl.uniform3fv(prog.uniforms.uDOF, Vec3.arrayForm(this.camera.dof));
 		gl.uniform3fv(prog.uniforms.uFade, Vec3.arrayForm(pf.fader));
 		gl.uniform1f(prog.uniforms.uOpacity, isDark ? this.opacityDark : this.opacityLight);
 
