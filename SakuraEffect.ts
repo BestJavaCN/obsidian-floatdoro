@@ -171,8 +171,8 @@ void main(void) {
 
 	// 花瓣内部颜色渐变 & 光照
 	// diffuse 产生朝向明暗变化；specular 带花色 tint 避免纯白高光
-	float grady = mix(0.45, 0.85, pow(coord.y * 0.5 + 0.5, 0.35));
-	float edgex = mix(0.75, 1.0, pow(abs(coord.x), 1.0));
+	float grady = mix(0.55, 0.9, pow(coord.y * 0.5 + 0.5, 0.35));
+	float edgex = mix(0.8, 1.0, pow(abs(coord.x), 1.0));
 	vec3 col = vColor * grady * edgex;
 	col = col * diffuse + vColor * specular * 0.35;
 
@@ -247,10 +247,10 @@ uniform vec2 uDelta;
 varying vec2 texCoord;
 varying vec2 screenCoord;
 void main(void) {
-	vec4 srccol = texture2D(uSrc, texCoord) * 2.0;
+	vec4 srccol = texture2D(uSrc, texCoord) * 1.3;
 	vec4 bloomcol = texture2D(uBloom, texCoord);
-	vec4 col = srccol + bloomcol * 0.5;
-	col = pow(col, vec4(0.45454545454545));
+	vec4 col = srccol + bloomcol * 0.4;
+	col = pow(col, vec4(0.65));
 	gl_FragColor = vec4(col.rgb, srccol.a);
 }`;
 
@@ -1004,13 +1004,13 @@ export class SakuraEffect {
 
 	/**
 	 * 生成柔和的粉彩色（HSL 方式）
-	 * 色相随机，饱和度中低，亮度适中 — 生成完整的 [r, g, b] 三元组
-	 * 亮度控制在 0.42-0.58，确保在亮色和暗色背景下都清晰可见
+	 * 色相随机，饱和度中高，亮度适中 — 生成完整的 [r, g, b] 三元组
+	 * 亮度控制在 0.32-0.50，确保在亮色和暗色背景下都清晰可见且保留色彩饱和度
 	 */
 	private generateSoftPastelColor(): [number, number, number] {
 		const hue = Math.random();
-		const saturation = 0.4 + Math.random() * 0.25;  // 0.4 - 0.65
-		const lightness = 0.42 + Math.random() * 0.16;  // 0.42 - 0.58
+		const saturation = 0.55 + Math.random() * 0.3;   // 0.55 - 0.85
+		const lightness = 0.32 + Math.random() * 0.18;   // 0.32 - 0.50
 		const a = saturation * Math.min(lightness, 1 - lightness);
 		const f = (n: number) => {
 			const k = (n + hue * 12) % 12;

@@ -50,10 +50,6 @@ export default class PomodoroPlugin extends Plugin {
     private longPressTimer: number | null = null;
     private readonly LONG_PRESS_DURATION = 600; // ms
 
-    // Lock state monitoring
-    private lockObserver: MutationObserver | null = null;
-    private isVaultLocked = false;
-
     async onload() {
         await this.loadSettings();
 
@@ -91,11 +87,17 @@ export default class PomodoroPlugin extends Plugin {
 
         // Apply saved ripple settings
         this.rippleEffect.setIntensity(this.settings.rippleIntensity);
-        this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
-        this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
-        this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
+		this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
+		this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
+		this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
 
-        this.timer = new PomoTimer(
+		// Apply saved sakura settings on load
+		this.sakuraEffect.setQuality(this.settings.sakuraQuality);
+		this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
+		this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
+		this.sakuraEffect.setOpacity(this.settings.sakuraOpacityLight, this.settings.sakuraOpacityDark);
+
+		this.timer = new PomoTimer(
             this, // Pass plugin instance for registerInterval
             this.settings,
             (remaining, total) => this.updateUI(remaining, total),
@@ -155,14 +157,11 @@ export default class PomodoroPlugin extends Plugin {
             );
         });
 
-        // Start lock state monitoring
-        this.startLockMonitoring();
     }
 
     onunload() {
         this.rippleEffect.stop();
         this.sakuraEffect.stop();
-        this.stopLockMonitoring();
         this.destroyFloatingPanel();
     }
 
@@ -540,6 +539,7 @@ export default class PomodoroPlugin extends Plugin {
             this.sakuraEffect.setQuality(this.settings.sakuraQuality);
             this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
             this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
+            this.sakuraEffect.setOpacity(this.settings.sakuraOpacityLight, this.settings.sakuraOpacityDark);
             this.sakuraEffect.start();
             this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
         }
@@ -675,107 +675,6 @@ export default class PomodoroPlugin extends Plugin {
             this.panelWrapperEl.removeClass('minidoro-flipped');
         }
     }
-
-    // ====================================================================
-    // Lock state monitoring for vault-locker plugin
-    // ====================================================================
-
-    private startLockMonitoring() {
-        // Listen for vault-locker lifecycle events if available
-        try {
-            document.addEventListener('vault-locker:locked', this.onVaultLocked as EventListener);
-            document.addEventListener('vault-locker:unlocked', this.onVaultUnlocked as EventListener);
-        } catch (_) { /* events may not exist */ }
-
-        // Also observe DOM class changes on body (common vault-locker pattern)
-        this.lockObserver = new MutationObserver((mutations) => {
-            for (const m of mutations) {
-                if (m.type === 'attributes' && m.attributeName === 'class') {
-                    const body = document.body;
-                    const isLocked = body.classList.contains('is-locked') ||
-                        body.classList.contains('vault-locked') ||
-                        !!document.querySelector('.vault-locker-overlay');
-                    if (isLocked !== this.isVaultLocked) {
-                        this.isVaultLocked = isLocked;
-                        if (isLocked) {
-                            this.onVaultLocked();
-                        } else {
-                            this.onVaultUnlocked();
-                        }
-                    }
-                }
-            }
-        });
-
-        this.lockObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-
-        // Also observe for vault-locker overlay element
-        const overlayObserver = new MutationObserver(() => {
-            const isLocked = !!document.querySelector('.vault-locker-overlay') ||
-                document.body.classList.contains('is-locked') ||
-                document.body.classList.contains('vault-locked');
-            if (isLocked !== this.isVaultLocked) {
-                this.isVaultLocked = isLocked;
-                if (isLocked) {
-                    this.onVaultLocked();
-                } else {
-                    this.onVaultUnlocked();
-                }
-            }
-        });
-
-        overlayObserver.observe(document.body, { childList: true, subtree: true });
-
-        // Store for cleanup
-        (this as any)._overlayObserver = overlayObserver;
-    }
-
-    private stopLockMonitoring() {
-        try {
-            document.removeEventListener('vault-locker:locked', this.onVaultLocked as EventListener);
-            document.removeEventListener('vault-locker:unlocked', this.onVaultUnlocked as EventListener);
-        } catch (_) { /* events may not exist */ }
-
-        if (this.lockObserver) {
-            this.lockObserver.disconnect();
-            this.lockObserver = null;
-        }
-
-        const overlayObserver = (this as any)._overlayObserver as MutationObserver | undefined;
-        if (overlayObserver) {
-            overlayObserver.disconnect();
-            (this as any)._overlayObserver = null;
-        }
-    }
-
-    private onVaultLocked = () => {
-        if (this.settings.lockEnableRipple && !this.rippleEffect.isActive()) {
-            this.rippleEffect.start();
-            this.rippleEffect.setIntensity(this.settings.rippleIntensity);
-            this.rippleEffect.setAutoRippleSpeed(this.settings.rippleSpeed);
-            this.rippleEffect.setPreset(this.settings.rippleDarkPreset, 'dark');
-            this.rippleEffect.setPreset(this.settings.rippleLightPreset, 'light');
-            this.rippleToggleBtnEl?.addClass('minidoro-effect-active');
-        }
-        if (this.settings.lockEnableSakura && !this.sakuraEffect.isActive()) {
-            this.sakuraEffect.setQuality(this.settings.sakuraQuality);
-            this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
-            this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
-            this.sakuraEffect.start();
-            this.sakuraToggleBtnEl?.addClass('minidoro-effect-active');
-        }
-    };
-
-    private onVaultUnlocked = () => {
-        if (this.settings.unlockDisableRipple && this.rippleEffect.isActive()) {
-            this.rippleEffect.stop();
-            this.rippleToggleBtnEl?.removeClass('minidoro-effect-active');
-        }
-        if (this.settings.unlockDisableSakura && this.sakuraEffect.isActive()) {
-            this.sakuraEffect.stop();
-            this.sakuraToggleBtnEl?.removeClass('minidoro-effect-active');
-        }
-    };
 
     private onDragMove = (event: MouseEvent) => {
         if (!this.isDragging) {
@@ -1545,50 +1444,6 @@ class PomodoroSettingTab extends PluginSettingTab {
                 });
                 return dropdown;
             });
-
-        new Setting(containerEl)
-            .setName(settingsTrans.lockSettings)
-            .setHeading();
-
-        new Setting(containerEl)
-            .setName(settingsTrans.lockEnableRipple)
-            .setDesc(settingsTrans.lockEnableRippleDesc)
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.lockEnableRipple)
-                .onChange(async (value) => {
-                    this.plugin.settings.lockEnableRipple = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName(settingsTrans.lockEnableSakura)
-            .setDesc(settingsTrans.lockEnableSakuraDesc)
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.lockEnableSakura)
-                .onChange(async (value) => {
-                    this.plugin.settings.lockEnableSakura = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName(settingsTrans.unlockDisableRipple)
-            .setDesc(settingsTrans.unlockDisableRippleDesc)
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.unlockDisableRipple)
-                .onChange(async (value) => {
-                    this.plugin.settings.unlockDisableRipple = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName(settingsTrans.unlockDisableSakura)
-            .setDesc(settingsTrans.unlockDisableSakuraDesc)
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.unlockDisableSakura)
-                .onChange(async (value) => {
-                    this.plugin.settings.unlockDisableSakura = value;
-                    await this.plugin.saveSettings();
-                }));
 
         new Setting(containerEl)
             .setName(settingsTrans.sakuraSettings)
