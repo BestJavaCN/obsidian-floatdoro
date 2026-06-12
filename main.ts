@@ -49,6 +49,7 @@ export default class PomodoroPlugin extends Plugin {
     // Long-press flip related
     private longPressTimer: number | null = null;
     private readonly LONG_PRESS_DURATION = 600; // ms
+    private isTouching = false;
 
     async onload() {
         await this.loadSettings();
@@ -663,6 +664,8 @@ export default class PomodoroPlugin extends Plugin {
 
     private onContextMenu = (event: MouseEvent) => {
         event.preventDefault();
+        // On mobile, flip is handled exclusively by the long-press timer to avoid race conditions
+        if (this.isTouching) return;
         this.toggleFlip();
     };
 
@@ -732,6 +735,7 @@ export default class PomodoroPlugin extends Plugin {
         
         this.hasDragged = false;
         this.dragPending = true;
+        this.isTouching = true;
         const touch = event.touches[0];
         this.dragStartPos = { x: touch.clientX, y: touch.clientY };
         
@@ -803,6 +807,7 @@ export default class PomodoroPlugin extends Plugin {
 
     private onTouchEnd = () => {
         this.dragPending = false;
+        this.isTouching = false;
         this.clearLongPressTimer();
         if (!this.isDragging) return;
         
