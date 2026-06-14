@@ -81,6 +81,8 @@ export const translations: Record<Language, Translation> = {
             sakuraOpacityLightDesc: 'Transparency of petals in light theme',
             sakuraOpacityDark: 'Petal opacity (dark mode)',
             sakuraOpacityDarkDesc: 'Transparency of petals in dark theme',
+            desktopFloat: 'Desktop floating window',
+            desktopFloatDesc: 'Show the timer panel as a separate always-on-top window on your desktop, even when Obsidian is minimized',
         }
     },
     zh: {
@@ -163,6 +165,8 @@ export const translations: Record<Language, Translation> = {
             sakuraOpacityLightDesc: '亮色主题下花瓣的透明度（数值越低越透明）',
             sakuraOpacityDark: '花瓣透明度（暗色模式）',
             sakuraOpacityDarkDesc: '暗色主题下花瓣的透明度（数值越低越透明）',
+            desktopFloat: '桌面悬浮窗',
+            desktopFloatDesc: '将计时器面板显示为独立的桌面置顶悬浮窗口，即使 Obsidian 最小化也能看到',
         }
     }
 };

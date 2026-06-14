@@ -38,6 +38,10 @@ export default class PomodoroPlugin extends Plugin {
     private rippleToggleBtnEl: HTMLButtonElement | null = null;
     private sakuraToggleBtnEl: HTMLButtonElement | null = null;
 
+    // Desktop floating window
+    private floatWindow: any = null;
+    private floatWindowUpdateInterval: number | null = null;
+
     // Drag related variables
     private isDragging = false;
     private hasDragged = false;
@@ -148,9 +152,22 @@ export default class PomodoroPlugin extends Plugin {
             void Notification.requestPermission().catch(err => console.error("Minidoro: Error requesting notification permission", err));
         }
 
+        // Register command handler for float window button clicks
+        (window as any).__floatdoroCommand = (cmd: string) => {
+            switch (cmd) {
+                case 'play': this.handlePauseResumeClick(); break;
+                case 'reset': this.handleResetClick(); break;
+                case 'complete': this.handleCompleteClick(); break;
+            }
+            this.updateFloatWindowContent();
+        };
+
         // Create floating panel after layout is ready
         this.app.workspace.onLayoutReady(() => {
             this.createFloatingPanel();
+            if (this.settings.desktopFloat) {
+                this.createDesktopFloatWindow();
+            }
             this.registerEvent(
                 this.app.workspace.on('active-leaf-change', () => {
                     this.createFloatingPanel();
@@ -161,6 +178,8 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     onunload() {
+        delete (window as any).__floatdoroCommand;
+        this.destroyDesktopFloatWindow();
         this.rippleEffect.stop();
         this.sakuraEffect.stop();
         this.destroyFloatingPanel();
@@ -171,6 +190,7 @@ export default class PomodoroPlugin extends Plugin {
     }
     
     async saveSettings() { 
+        const wasDesktopFloat = this.settings.desktopFloat;
         await this.saveData(this.settings); 
         this.timer.updateSettings(this.settings); 
         this.updateUI(0, 0); 
@@ -182,6 +202,13 @@ export default class PomodoroPlugin extends Plugin {
         this.sakuraEffect.setColors(this.settings.sakuraColorLight, this.settings.sakuraColorDark);
         this.sakuraEffect.setMultiColor(this.settings.sakuraMultiColor);
         this.sakuraEffect.setOpacity(this.settings.sakuraOpacityLight, this.settings.sakuraOpacityDark);
+
+        // Handle desktop float change
+        if (this.settings.desktopFloat && !wasDesktopFloat) {
+            this.createDesktopFloatWindow();
+        } else if (!this.settings.desktopFloat && wasDesktopFloat) {
+            this.destroyDesktopFloatWindow();
+        }
     }
     
     private updatePanelSize() {
@@ -551,9 +578,361 @@ export default class PomodoroPlugin extends Plugin {
             this.isDisabled = false;
             this.createFloatingPanel();
             this.isVisible = true;
+            if (this.settings.desktopFloat) {
+                this.createDesktopFloatWindow();
+            }
         } else {
+            this.destroyDesktopFloatWindow();
             this.destroyFloatingPanel();
         }
+    }
+
+    // ── Desktop Floating Window ──
+
+    createDesktopFloatWindow() {
+        if (this.floatWindow) return;
+
+        try {
+            const electron = (window as any).require('electron');
+            if (!electron) {
+                console.warn('Floatdoro: Electron not available, cannot create floating window');
+                return;
+            }
+
+            const { BrowserWindow } = electron.remote || electron;
+            if (!BrowserWindow) {
+                console.warn('Floatdoro: BrowserWindow not available');
+                return;
+            }
+
+            this.floatWindow = new BrowserWindow({
+                width: 136,
+                height: 120,
+                alwaysOnTop: true,
+                frame: false,
+                transparent: true,
+                hasShadow: false,
+                resizable: false,
+                skipTaskbar: true,
+                focusable: true,
+                type: 'toolbar',
+                webPreferences: {
+                    nodeIntegration: true,
+                    contextIsolation: false,
+                    enableRemoteModule: true,
+                },
+            });
+
+            // Position in top-right corner of screen
+            const { screen } = electron.remote || electron;
+            const primaryDisplay = screen.getPrimaryDisplay();
+            const { width: screenWidth } = primaryDisplay.workAreaSize;
+            this.floatWindow.setPosition(screenWidth - 156, 60);
+
+            // Get Obsidian's webContents ID for direct IPC
+            const obsidianWebContentsId = electron.remote.getCurrentWebContents().id;
+
+            // Load the timer HTML with Obsidian's webContents ID
+            this.floatWindow.loadURL(this.getFloatWindowHTMLUrl(obsidianWebContentsId));
+
+            // Update the floating window content every second
+            this.floatWindowUpdateInterval = window.setInterval(() => {
+                if (this.floatWindow && !this.floatWindow.isDestroyed()) {
+                    this.updateFloatWindowContent();
+                }
+            }, 500) as unknown as number;
+
+            this.floatWindow.on('closed', () => {
+                if (this.floatWindowUpdateInterval) {
+                    window.clearInterval(this.floatWindowUpdateInterval);
+                    this.floatWindowUpdateInterval = null;
+                }
+                this.floatWindow = null;
+            });
+
+        } catch (err) {
+            console.error('Floatdoro: Failed to create floating window:', err);
+        }
+    }
+
+    private getFloatWindowHTMLUrl(obsidianWebContentsId: number): string {
+        const isDark = document.body.classList.contains('theme-dark');
+
+        // Mode-based header colors (matching Obsidian CSS variables)
+        const workColor = isDark ? '#B39DDB' : '#A382F8';
+        const shortBreakColor = isDark ? '#81C784' : '#4CAF50';
+        const longBreakColor = isDark ? '#64B5F6' : '#42A5F5';
+        const overtimeColor = isDark ? '#FFB74D' : '#F59E0B';
+
+        const panelBg = isDark ? 'var(--background-secondary, #2d2d2d)' : 'var(--background-secondary, #f8f8f8)';
+        const borderColor = isDark ? 'var(--background-modifier-border, rgba(255,255,255,0.1))' : 'var(--background-modifier-border, rgba(0,0,0,0.1))';
+
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+    --work-color: ${workColor};
+    --short-break-color: ${shortBreakColor};
+    --long-break-color: ${longBreakColor};
+    --overtime-color: ${overtimeColor};
+    --panel-bg: ${panelBg};
+    --panel-border: ${borderColor};
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    user-select: none;
+}
+#app {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    background: var(--panel-bg);
+    border-radius: 16px;
+    border: 1px solid var(--panel-border);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    gap: 6px;
+    padding: 8px;
+}
+#header {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: var(--mode-color, var(--work-color));
+    border-radius: 10px;
+    cursor: default;
+    overflow: hidden;
+    -webkit-app-region: drag;
+    transition: background 0.3s ease;
+    padding: 10px 8px;
+}
+#time {
+    position: relative;
+    z-index: 1;
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: 0;
+    line-height: 1;
+    margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+}
+#mode {
+    position: relative;
+    z-index: 1;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 0;
+}
+#header.spinning::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    pointer-events: none;
+    z-index: 0;
+    background: repeating-conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(255, 255, 255, 0.3) 5deg,
+        transparent 10deg,
+        rgba(200, 180, 255, 0.25) 15deg,
+        transparent 20deg
+    );
+    animation: panelRaySpin 4s linear infinite;
+}
+@keyframes panelRaySpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+#buttons {
+    display: flex;
+    justify-content: space-between;
+    flex-shrink: 0;
+    -webkit-app-region: no-drag;
+}
+button {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel-bg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+}
+button:hover {
+    transform: translateY(-1px);
+    filter: brightness(0.95);
+}
+button:active {
+    transform: scale(0.95);
+}
+button svg {
+    width: 20px;
+    height: 20px;
+}
+#btn-play svg { color: #5b9cf9; }
+#btn-reset svg { color: #f5c842; }
+#btn-complete svg { color: #73c991; }
+</style>
+</head>
+<body>
+<div id="app">
+    <div id="header">
+        <div id="time">--:--</div>
+        <div id="mode">Ready</div>
+    </div>
+    <div id="buttons">
+        <button id="btn-play" title="Start timer">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="btn-reset" title="Reset timer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
+        <button id="btn-complete" title="Complete session">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+    </div>
+</div>
+<script>
+    // Use polling-based communication instead of remote module
+    // (remote module is not available in child BrowserWindows in Electron 14+)
+    window.__pendingCommand = null;
+
+    document.getElementById('btn-play').addEventListener('click', function() {
+        window.__pendingCommand = 'play';
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', function() {
+        window.__pendingCommand = 'reset';
+    });
+
+    document.getElementById('btn-complete').addEventListener('click', function() {
+        window.__pendingCommand = 'complete';
+    });
+</script>
+</body>
+</html>`;
+
+        return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+    }
+
+    private async updateFloatWindowContent() {
+        if (!this.floatWindow || this.floatWindow.isDestroyed()) return;
+
+        try {
+            // ── 1. Poll for pending commands from float window buttons ──
+            const pendingCmd: string | null = await this.floatWindow.webContents.executeJavaScript(
+                'window.__pendingCommand'
+            );
+            if (pendingCmd) {
+                // Clear the pending command immediately
+                await this.floatWindow.webContents.executeJavaScript(
+                    'window.__pendingCommand = null'
+                );
+                // Execute the command
+                switch (pendingCmd) {
+                    case 'play': this.handlePauseResumeClick(); break;
+                    case 'reset': this.handleResetClick(); break;
+                    case 'complete': this.handleCompleteClick(); break;
+                }
+            }
+
+            // ── 2. Update the display ──
+            const timerState = this.timer.getState();
+            const remainingTime = this.timer.getRemainingTime();
+            const totalTime = this.timer.getTotalTime();
+            const isOvertime = this.timer.isOvertime();
+            const translation = this.getTranslation();
+
+            const minutes = Math.floor(remainingTime / 60).toString().padStart(2, '0');
+            const seconds = (remainingTime % 60).toString().padStart(2, '0');
+            const timeStr = `${minutes}:${seconds}`;
+
+            let modeStr: string;
+            if (isOvertime) {
+                modeStr = translation.overtime;
+            } else {
+                modeStr = this.getModeText();
+            }
+
+            // Determine header mode class (same logic as Obsidian panel)
+            let modeClass: string;
+            if (isOvertime) {
+                modeClass = 'overtime';
+            } else {
+                switch (this.currentMode) {
+                    case TimerState.Work: modeClass = 'work'; break;
+                    case TimerState.ShortBreak: modeClass = 'short-break'; break;
+                    case TimerState.LongBreak: modeClass = 'long-break'; break;
+                    default: modeClass = 'work'; break;
+                }
+            }
+
+            // Play/pause button icon
+            const isRunning = timerState !== TimerState.Idle && timerState !== TimerState.Paused;
+            const playSvg = isRunning
+                ? `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
+                : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+            const playTitle = isRunning ? 'Pause timer' : 'Start timer';
+
+            // Spinning animation when in work mode and running
+            const isSpinning = this.currentMode === TimerState.Work && timerState === TimerState.Work;
+
+            // Idle time display
+            let displayTime = timeStr;
+            if (timerState === TimerState.Idle && !this.isSessionComplete && !isOvertime) {
+                displayTime = this.getIdleTimeText();
+            }
+
+            const js = `
+                var header = document.getElementById('header');
+                header.style.setProperty('--mode-color', 'var(--${modeClass}-color)');
+                if (${isSpinning}) {
+                    header.classList.add('spinning');
+                } else {
+                    header.classList.remove('spinning');
+                }
+                document.getElementById('time').textContent = '${displayTime}';
+                document.getElementById('mode').textContent = '${modeStr}';
+                document.getElementById('btn-play').innerHTML = \`${playSvg}\`;
+                document.getElementById('btn-play').setAttribute('title', '${playTitle}');
+            `;
+
+            await this.floatWindow.webContents.executeJavaScript(js);
+        } catch {
+            // Window may have been closed
+        }
+    }
+
+    destroyDesktopFloatWindow() {
+        if (this.floatWindowUpdateInterval) {
+            window.clearInterval(this.floatWindowUpdateInterval);
+            this.floatWindowUpdateInterval = null;
+        }
+        if (this.floatWindow && !this.floatWindow.isDestroyed()) {
+            try {
+                this.floatWindow.close();
+            } catch {
+                // ignore
+            }
+        }
+        this.floatWindow = null;
     }
 
     private destroyFloatingPanel() {
@@ -1281,7 +1660,22 @@ class PomodoroSettingTab extends PluginSettingTab {
                     this.plugin.settings.panelSize = value as 'small' | 'medium' | 'large';
                     await this.plugin.saveSettings();
                 }));
-        
+
+        new Setting(containerEl)
+            .setName(settingsTrans.desktopFloat)
+            .setDesc(settingsTrans.desktopFloatDesc)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.desktopFloat)
+                .onChange(async (value) => {
+                    this.plugin.settings.desktopFloat = value;
+                    await this.plugin.saveSettings();
+                    if (value) {
+                        this.plugin.createDesktopFloatWindow();
+                    } else {
+                        this.plugin.destroyDesktopFloatWindow();
+                    }
+                }));
+
         new Setting(containerEl)
             .setName(settingsTrans.workTime)
             .setDesc(settingsTrans.workTimeDesc)

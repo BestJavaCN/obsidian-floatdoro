@@ -91,6 +91,8 @@ export interface Translation {
             sakuraOpacityLightDesc: string;
             sakuraOpacityDark: string;
             sakuraOpacityDarkDesc: string;
+            desktopFloat: string;
+            desktopFloatDesc: string;
         };
 }
 
@@ -383,6 +385,7 @@ export interface PomodoroSettings {
     sakuraMultiColor: boolean;
     sakuraOpacityLight: number;
     sakuraOpacityDark: number;
+    desktopFloat: boolean;
 }
 
 export const DEFAULT_SETTINGS: PomodoroSettings = {
@@ -410,4 +413,5 @@ export const DEFAULT_SETTINGS: PomodoroSettings = {
     sakuraMultiColor: false,
     sakuraOpacityLight: 1.0,
     sakuraOpacityDark: 1.0,
+    desktopFloat: false,
 };
