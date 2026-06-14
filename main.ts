@@ -152,8 +152,9 @@ export default class PomodoroPlugin extends Plugin {
             void Notification.requestPermission().catch(err => console.error("Minidoro: Error requesting notification permission", err));
         }
 
-        // Register command handler for float window button clicks
-        (window as any).__floatdoroCommand = (cmd: string) => {
+        // Register IPC listener for float window button clicks (ipcRenderer.sendTo)
+        const { ipcRenderer } = (window as any).require('electron');
+        const floatdoroCommandHandler = (_event: any, cmd: string) => {
             switch (cmd) {
                 case 'play': this.handlePauseResumeClick(); break;
                 case 'reset': this.handleResetClick(); break;
@@ -161,6 +162,9 @@ export default class PomodoroPlugin extends Plugin {
             }
             this.updateFloatWindowContent();
         };
+        ipcRenderer.on('floatdoro-command', floatdoroCommandHandler);
+        // Store reference for cleanup
+        (this as any).__floatdoroIpcHandler = floatdoroCommandHandler;
 
         // Create floating panel after layout is ready
         this.app.workspace.onLayoutReady(() => {
@@ -178,7 +182,11 @@ export default class PomodoroPlugin extends Plugin {
     }
 
     onunload() {
-        delete (window as any).__floatdoroCommand;
+        // Remove IPC listener
+        const { ipcRenderer } = (window as any).require('electron');
+        if ((this as any).__floatdoroIpcHandler) {
+            ipcRenderer.removeListener('floatdoro-command', (this as any).__floatdoroIpcHandler);
+        }
         this.destroyDesktopFloatWindow();
         this.rippleEffect.stop();
         this.sakuraEffect.stop();
@@ -810,20 +818,20 @@ button svg {
     </div>
 </div>
 <script>
-    // Use polling-based communication instead of remote module
-    // (remote module is not available in child BrowserWindows in Electron 14+)
-    window.__pendingCommand = null;
+    // IPC-based communication: ipcRenderer.sendTo targets Obsidian's renderer directly
+    var ipcRenderer = require('electron').ipcRenderer;
+    var obsidianId = ${obsidianWebContentsId};
 
     document.getElementById('btn-play').addEventListener('click', function() {
-        window.__pendingCommand = 'play';
+        ipcRenderer.sendTo(obsidianId, 'floatdoro-command', 'play');
     });
 
     document.getElementById('btn-reset').addEventListener('click', function() {
-        window.__pendingCommand = 'reset';
+        ipcRenderer.sendTo(obsidianId, 'floatdoro-command', 'reset');
     });
 
     document.getElementById('btn-complete').addEventListener('click', function() {
-        window.__pendingCommand = 'complete';
+        ipcRenderer.sendTo(obsidianId, 'floatdoro-command', 'complete');
     });
 </script>
 </body>
@@ -832,28 +840,10 @@ button svg {
         return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
     }
 
-    private async updateFloatWindowContent() {
+    private updateFloatWindowContent() {
         if (!this.floatWindow || this.floatWindow.isDestroyed()) return;
 
         try {
-            // ── 1. Poll for pending commands from float window buttons ──
-            const pendingCmd: string | null = await this.floatWindow.webContents.executeJavaScript(
-                'window.__pendingCommand'
-            );
-            if (pendingCmd) {
-                // Clear the pending command immediately
-                await this.floatWindow.webContents.executeJavaScript(
-                    'window.__pendingCommand = null'
-                );
-                // Execute the command
-                switch (pendingCmd) {
-                    case 'play': this.handlePauseResumeClick(); break;
-                    case 'reset': this.handleResetClick(); break;
-                    case 'complete': this.handleCompleteClick(); break;
-                }
-            }
-
-            // ── 2. Update the display ──
             const timerState = this.timer.getState();
             const remainingTime = this.timer.getRemainingTime();
             const totalTime = this.timer.getTotalTime();
@@ -914,7 +904,7 @@ button svg {
                 document.getElementById('btn-play').setAttribute('title', '${playTitle}');
             `;
 
-            await this.floatWindow.webContents.executeJavaScript(js);
+            this.floatWindow.webContents.executeJavaScript(js);
         } catch {
             // Window may have been closed
         }
