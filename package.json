@@ -5,7 +5,7 @@
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && xcopy manifest.json E:\\ObsidianVaultBak\\.obsidian\\plugins\\floatdoro /Y && xcopy styles.css E:\\ObsidianVaultBak\\.obsidian\\plugins\\floatdoro /Y",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [

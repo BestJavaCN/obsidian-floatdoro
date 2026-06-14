@@ -1,6 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import fs from "fs";
+import path from "path";
 
 const banner =
 `/*
@@ -10,6 +12,7 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+const outfile = "D:\\ObsidianVaultBak\\.obsidian\\plugins\\floatdoro\\main.js";
 
 const context = await esbuild.context({
 	banner: {
@@ -37,12 +40,15 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "E:\\ObsidianVaultBak\\.obsidian\\plugins\\floatdoro\\main.js",
+	outfile,
 	minify: prod,
 });
 
 if (prod) {
 	await context.rebuild();
+	const outDir = path.dirname(outfile);
+	fs.copyFileSync("manifest.json", path.join(outDir, "manifest.json"));
+	fs.copyFileSync("styles.css", path.join(outDir, "styles.css"));
 	process.exit(0);
 } else {
 	await context.watch();
